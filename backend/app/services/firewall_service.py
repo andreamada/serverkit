@@ -6,6 +6,13 @@ import re
 from typing import Dict, List, Optional
 from datetime import datetime
 
+from app.utils.system import (
+    PackageManager,
+    ServiceControl,
+    is_command_available,
+    run_privileged,
+)
+
 
 class FirewallService:
     """Service for managing firewall (firewalld or ufw)."""
@@ -38,41 +45,17 @@ class FirewallService:
     def _check_firewalld(cls) -> Dict:
         """Check firewalld status."""
         try:
-            # Check if installed using dpkg or by checking common paths
-            installed = False
-
-            # Try dpkg first (Debian/Ubuntu)
-            result = subprocess.run(
-                ['dpkg', '-s', 'firewalld'],
-                capture_output=True, text=True
-            )
-            if result.returncode == 0 and 'Status: install ok installed' in result.stdout:
-                installed = True
-
-            # Also check if binary exists at common paths
-            if not installed:
-                for path in ['/usr/bin/firewall-cmd', '/usr/sbin/firewall-cmd']:
-                    if os.path.exists(path):
-                        installed = True
-                        break
+            installed = PackageManager.is_installed('firewalld') or is_command_available('firewall-cmd')
 
             running = False
             default_zone = None
 
             if installed:
-                # Check if running
-                result = subprocess.run(
-                    ['firewall-cmd', '--state'],
-                    capture_output=True, text=True
-                )
+                result = run_privileged(['firewall-cmd', '--state'])
                 running = 'running' in result.stdout.lower()
 
                 if running:
-                    # Get default zone
-                    result = subprocess.run(
-                        ['firewall-cmd', '--get-default-zone'],
-                        capture_output=True, text=True
-                    )
+                    result = run_privileged(['firewall-cmd', '--get-default-zone'])
                     default_zone = result.stdout.strip()
 
             return {
@@ -87,30 +70,11 @@ class FirewallService:
     def _check_ufw(cls) -> Dict:
         """Check ufw status."""
         try:
-            # Check if installed using dpkg or by checking common paths
-            installed = False
-
-            # Try dpkg first (Debian/Ubuntu)
-            result = subprocess.run(
-                ['dpkg', '-s', 'ufw'],
-                capture_output=True, text=True
-            )
-            if result.returncode == 0 and 'Status: install ok installed' in result.stdout:
-                installed = True
-
-            # Also check if binary exists at common paths
-            if not installed:
-                for path in ['/usr/sbin/ufw', '/usr/bin/ufw']:
-                    if os.path.exists(path):
-                        installed = True
-                        break
+            installed = PackageManager.is_installed('ufw') or is_command_available('ufw')
 
             active = False
             if installed:
-                result = subprocess.run(
-                    ['sudo', 'ufw', 'status'],
-                    capture_output=True, text=True
-                )
+                result = run_privileged(['ufw', 'status'])
                 active = 'Status: active' in result.stdout
 
             return {
@@ -138,11 +102,8 @@ class FirewallService:
     def _enable_firewalld(cls) -> Dict:
         """Enable firewalld."""
         try:
-            subprocess.run(['sudo', 'systemctl', 'enable', 'firewalld'], capture_output=True)
-            result = subprocess.run(
-                ['sudo', 'systemctl', 'start', 'firewalld'],
-                capture_output=True, text=True
-            )
+            ServiceControl.enable('firewalld')
+            result = ServiceControl.start('firewalld')
             if result.returncode == 0:
                 return {'success': True, 'message': 'Firewalld enabled and started'}
             return {'success': False, 'error': result.stderr or 'Failed to start firewalld'}
@@ -153,10 +114,7 @@ class FirewallService:
     def _enable_ufw(cls) -> Dict:
         """Enable ufw."""
         try:
-            result = subprocess.run(
-                ['sudo', 'ufw', '--force', 'enable'],
-                capture_output=True, text=True
-            )
+            result = run_privileged(['ufw', '--force', 'enable'])
             if result.returncode == 0:
                 return {'success': True, 'message': 'UFW enabled'}
             return {'success': False, 'error': result.stderr or 'Failed to enable UFW'}
@@ -181,10 +139,7 @@ class FirewallService:
     def _disable_firewalld(cls) -> Dict:
         """Disable firewalld."""
         try:
-            result = subprocess.run(
-                ['sudo', 'systemctl', 'stop', 'firewalld'],
-                capture_output=True, text=True
-            )
+            result = ServiceControl.stop('firewalld')
             if result.returncode == 0:
                 return {'success': True, 'message': 'Firewalld stopped'}
             return {'success': False, 'error': result.stderr or 'Failed to stop firewalld'}
@@ -195,10 +150,7 @@ class FirewallService:
     def _disable_ufw(cls) -> Dict:
         """Disable ufw."""
         try:
-            result = subprocess.run(
-                ['sudo', 'ufw', 'disable'],
-                capture_output=True, text=True
-            )
+            result = run_privileged(['ufw', 'disable'])
             if result.returncode == 0:
                 return {'success': True, 'message': 'UFW disabled'}
             return {'success': False, 'error': result.stderr or 'Failed to disable UFW'}
@@ -226,17 +178,11 @@ class FirewallService:
             rules = []
 
             # Get default zone
-            result = subprocess.run(
-                ['firewall-cmd', '--get-default-zone'],
-                capture_output=True, text=True
-            )
+            result = run_privileged(['firewall-cmd', '--get-default-zone'])
             default_zone = result.stdout.strip()
 
             # Get services
-            result = subprocess.run(
-                ['firewall-cmd', '--list-services'],
-                capture_output=True, text=True
-            )
+            result = run_privileged(['firewall-cmd', '--list-services'])
             services = result.stdout.strip().split() if result.stdout.strip() else []
             for service in services:
                 rules.append({
@@ -247,10 +193,7 @@ class FirewallService:
                 })
 
             # Get ports
-            result = subprocess.run(
-                ['firewall-cmd', '--list-ports'],
-                capture_output=True, text=True
-            )
+            result = run_privileged(['firewall-cmd', '--list-ports'])
             ports = result.stdout.strip().split() if result.stdout.strip() else []
             for port in ports:
                 port_num, protocol = port.split('/') if '/' in port else (port, 'tcp')
@@ -263,10 +206,7 @@ class FirewallService:
                 })
 
             # Get rich rules (includes IP blocks)
-            result = subprocess.run(
-                ['firewall-cmd', '--list-rich-rules'],
-                capture_output=True, text=True
-            )
+            result = run_privileged(['firewall-cmd', '--list-rich-rules'])
             rich_rules = result.stdout.strip().split('\n') if result.stdout.strip() else []
             for rule in rich_rules:
                 if rule:
@@ -289,10 +229,7 @@ class FirewallService:
     def _get_ufw_rules(cls) -> Dict:
         """Get ufw rules."""
         try:
-            result = subprocess.run(
-                ['sudo', 'ufw', 'status', 'numbered'],
-                capture_output=True, text=True
-            )
+            result = run_privileged(['ufw', 'status', 'numbered'])
 
             rules = []
             lines = result.stdout.strip().split('\n')
@@ -341,20 +278,20 @@ class FirewallService:
                 service = kwargs.get('service')
                 if not service:
                     return {'success': False, 'error': 'Service name required'}
-                cmd = ['sudo', 'firewall-cmd'] + perm_flag + [f'--add-service={service}']
+                cmd = ['firewall-cmd'] + perm_flag + [f'--add-service={service}']
 
             elif rule_type == 'port':
                 port = kwargs.get('port')
                 protocol = kwargs.get('protocol', 'tcp')
                 if not port:
                     return {'success': False, 'error': 'Port number required'}
-                cmd = ['sudo', 'firewall-cmd'] + perm_flag + [f'--add-port={port}/{protocol}']
+                cmd = ['firewall-cmd'] + perm_flag + [f'--add-port={port}/{protocol}']
 
             elif rule_type == 'block_ip':
                 ip = kwargs.get('ip')
                 if not ip:
                     return {'success': False, 'error': 'IP address required'}
-                cmd = ['sudo', 'firewall-cmd'] + perm_flag + [
+                cmd = ['firewall-cmd'] + perm_flag + [
                     f'--add-rich-rule=rule family="ipv4" source address="{ip}" reject'
                 ]
 
@@ -364,23 +301,23 @@ class FirewallService:
                 if not ip:
                     return {'success': False, 'error': 'IP address required'}
                 if port:
-                    cmd = ['sudo', 'firewall-cmd'] + perm_flag + [
+                    cmd = ['firewall-cmd'] + perm_flag + [
                         f'--add-rich-rule=rule family="ipv4" source address="{ip}" port port="{port}" protocol="tcp" accept'
                     ]
                 else:
-                    cmd = ['sudo', 'firewall-cmd'] + perm_flag + [
+                    cmd = ['firewall-cmd'] + perm_flag + [
                         f'--add-rich-rule=rule family="ipv4" source address="{ip}" accept'
                     ]
 
             else:
                 return {'success': False, 'error': f'Unknown rule type: {rule_type}'}
 
-            result = subprocess.run(cmd, capture_output=True, text=True)
+            result = run_privileged(cmd)
 
             if result.returncode == 0:
                 # Reload if permanent
                 if permanent:
-                    subprocess.run(['sudo', 'firewall-cmd', '--reload'], capture_output=True)
+                    run_privileged(['firewall-cmd', '--reload'])
                 return {'success': True, 'message': 'Rule added successfully'}
 
             return {'success': False, 'error': result.stderr or 'Failed to add rule'}
@@ -398,20 +335,20 @@ class FirewallService:
                 action = kwargs.get('action', 'allow')
                 if not port:
                     return {'success': False, 'error': 'Port number required'}
-                cmd = ['sudo', 'ufw', action, f'{port}/{protocol}']
+                cmd = ['ufw', action, f'{port}/{protocol}']
 
             elif rule_type == 'service':
                 service = kwargs.get('service')
                 action = kwargs.get('action', 'allow')
                 if not service:
                     return {'success': False, 'error': 'Service name required'}
-                cmd = ['sudo', 'ufw', action, service]
+                cmd = ['ufw', action, service]
 
             elif rule_type == 'block_ip':
                 ip = kwargs.get('ip')
                 if not ip:
                     return {'success': False, 'error': 'IP address required'}
-                cmd = ['sudo', 'ufw', 'deny', 'from', ip]
+                cmd = ['ufw', 'deny', 'from', ip]
 
             elif rule_type == 'allow_ip':
                 ip = kwargs.get('ip')
@@ -419,14 +356,14 @@ class FirewallService:
                 if not ip:
                     return {'success': False, 'error': 'IP address required'}
                 if port:
-                    cmd = ['sudo', 'ufw', 'allow', 'from', ip, 'to', 'any', 'port', str(port)]
+                    cmd = ['ufw', 'allow', 'from', ip, 'to', 'any', 'port', str(port)]
                 else:
-                    cmd = ['sudo', 'ufw', 'allow', 'from', ip]
+                    cmd = ['ufw', 'allow', 'from', ip]
 
             else:
                 return {'success': False, 'error': f'Unknown rule type: {rule_type}'}
 
-            result = subprocess.run(cmd, capture_output=True, text=True)
+            result = run_privileged(cmd)
 
             if result.returncode == 0:
                 return {'success': True, 'message': 'Rule added successfully'}
@@ -458,31 +395,31 @@ class FirewallService:
 
             if rule_type == 'service':
                 service = kwargs.get('service')
-                cmd = ['sudo', 'firewall-cmd'] + perm_flag + [f'--remove-service={service}']
+                cmd = ['firewall-cmd'] + perm_flag + [f'--remove-service={service}']
 
             elif rule_type == 'port':
                 port = kwargs.get('port')
                 protocol = kwargs.get('protocol', 'tcp')
-                cmd = ['sudo', 'firewall-cmd'] + perm_flag + [f'--remove-port={port}/{protocol}']
+                cmd = ['firewall-cmd'] + perm_flag + [f'--remove-port={port}/{protocol}']
 
             elif rule_type == 'block_ip':
                 ip = kwargs.get('ip')
-                cmd = ['sudo', 'firewall-cmd'] + perm_flag + [
+                cmd = ['firewall-cmd'] + perm_flag + [
                     f'--remove-rich-rule=rule family="ipv4" source address="{ip}" reject'
                 ]
 
             elif rule_type == 'rich':
                 rule = kwargs.get('rule')
-                cmd = ['sudo', 'firewall-cmd'] + perm_flag + [f'--remove-rich-rule={rule}']
+                cmd = ['firewall-cmd'] + perm_flag + [f'--remove-rich-rule={rule}']
 
             else:
                 return {'success': False, 'error': f'Unknown rule type: {rule_type}'}
 
-            result = subprocess.run(cmd, capture_output=True, text=True)
+            result = run_privileged(cmd)
 
             if result.returncode == 0:
                 if permanent:
-                    subprocess.run(['sudo', 'firewall-cmd', '--reload'], capture_output=True)
+                    run_privileged(['firewall-cmd', '--reload'])
                 return {'success': True, 'message': 'Rule removed successfully'}
 
             return {'success': False, 'error': result.stderr or 'Failed to remove rule'}
@@ -496,27 +433,16 @@ class FirewallService:
         try:
             rule_number = kwargs.get('number')
             if rule_number:
-                # Remove by number
-                result = subprocess.run(
-                    ['sudo', 'ufw', '--force', 'delete', str(rule_number)],
-                    capture_output=True, text=True
-                )
+                result = run_privileged(['ufw', '--force', 'delete', str(rule_number)])
             else:
-                # Remove by specification
                 if rule_type == 'port':
                     port = kwargs.get('port')
                     protocol = kwargs.get('protocol', 'tcp')
                     action = kwargs.get('action', 'allow')
-                    result = subprocess.run(
-                        ['sudo', 'ufw', 'delete', action, f'{port}/{protocol}'],
-                        capture_output=True, text=True
-                    )
+                    result = run_privileged(['ufw', 'delete', action, f'{port}/{protocol}'])
                 elif rule_type == 'block_ip':
                     ip = kwargs.get('ip')
-                    result = subprocess.run(
-                        ['sudo', 'ufw', 'delete', 'deny', 'from', ip],
-                        capture_output=True, text=True
-                    )
+                    result = run_privileged(['ufw', 'delete', 'deny', 'from', ip])
                 else:
                     return {'success': False, 'error': 'Rule number or specification required'}
 
@@ -561,10 +487,7 @@ class FirewallService:
         blocked_ips = []
 
         if firewall == 'firewalld':
-            result = subprocess.run(
-                ['firewall-cmd', '--list-rich-rules'],
-                capture_output=True, text=True
-            )
+            result = run_privileged(['firewall-cmd', '--list-rich-rules'])
             for line in result.stdout.strip().split('\n'):
                 if 'reject' in line.lower() or 'drop' in line.lower():
                     match = re.search(r'source address="([^"]+)"', line)
@@ -575,10 +498,7 @@ class FirewallService:
                         })
 
         elif firewall == 'ufw':
-            result = subprocess.run(
-                ['sudo', 'ufw', 'status', 'numbered'],
-                capture_output=True, text=True
-            )
+            result = run_privileged(['ufw', 'status', 'numbered'])
             for line in result.stdout.strip().split('\n'):
                 if 'DENY' in line:
                     # Parse IP from rule
@@ -599,26 +519,15 @@ class FirewallService:
     def get_zones(cls) -> Dict:
         """Get firewalld zones (firewalld only)."""
         try:
-            # Get all zones
-            result = subprocess.run(
-                ['firewall-cmd', '--get-zones'],
-                capture_output=True, text=True
-            )
+            result = run_privileged(['firewall-cmd', '--get-zones'])
             zones = result.stdout.strip().split()
 
-            # Get default zone
-            result = subprocess.run(
-                ['firewall-cmd', '--get-default-zone'],
-                capture_output=True, text=True
-            )
+            result = run_privileged(['firewall-cmd', '--get-default-zone'])
             default_zone = result.stdout.strip()
 
             zone_details = []
             for zone in zones:
-                result = subprocess.run(
-                    ['firewall-cmd', f'--zone={zone}', '--list-all'],
-                    capture_output=True, text=True
-                )
+                result = run_privileged(['firewall-cmd', f'--zone={zone}', '--list-all'])
                 zone_details.append({
                     'name': zone,
                     'is_default': zone == default_zone,
@@ -637,10 +546,7 @@ class FirewallService:
     def set_default_zone(cls, zone: str) -> Dict:
         """Set default firewalld zone."""
         try:
-            result = subprocess.run(
-                ['sudo', 'firewall-cmd', f'--set-default-zone={zone}'],
-                capture_output=True, text=True
-            )
+            result = run_privileged(['firewall-cmd', f'--set-default-zone={zone}'])
             if result.returncode == 0:
                 return {'success': True, 'message': f'Default zone set to {zone}'}
             return {'success': False, 'error': result.stderr or 'Failed to set default zone'}
@@ -654,14 +560,7 @@ class FirewallService:
             return {'success': False, 'error': 'Invalid firewall. Use ufw or firewalld'}
 
         try:
-            # Update package list
-            subprocess.run(['sudo', 'apt-get', 'update'], capture_output=True, timeout=120)
-
-            # Install
-            result = subprocess.run(
-                ['sudo', 'apt-get', 'install', '-y', firewall],
-                capture_output=True, text=True, timeout=300
-            )
+            result = PackageManager.install(firewall)
 
             if result.returncode == 0:
                 return {'success': True, 'message': f'{firewall} installed successfully'}
@@ -669,6 +568,8 @@ class FirewallService:
 
         except subprocess.TimeoutExpired:
             return {'success': False, 'error': 'Installation timed out'}
+        except RuntimeError as e:
+            return {'success': False, 'error': str(e)}
         except Exception as e:
             return {'success': False, 'error': str(e)}
 

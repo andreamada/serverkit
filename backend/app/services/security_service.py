@@ -20,6 +20,11 @@ from pathlib import Path
 
 from .notification_service import NotificationService
 from app import paths
+from app.utils.system import (
+    PackageManager,
+    ServiceControl,
+    run_privileged,
+)
 
 
 class SecurityService:
@@ -122,25 +127,12 @@ class SecurityService:
 
         # Check if clamd service is running
         try:
-            service_check = subprocess.run(
-                ['systemctl', 'is-active', 'clamav-daemon'],
-                capture_output=True,
-                text=True,
-                timeout=5
-            )
-            result['service_running'] = service_check.stdout.strip() == 'active'
+            result['service_running'] = ServiceControl.is_active('clamav-daemon')
+            if not result['service_running']:
+                # Try alternative service name
+                result['service_running'] = ServiceControl.is_active('clamd')
         except Exception:
-            # Try alternative service name
-            try:
-                service_check = subprocess.run(
-                    ['systemctl', 'is-active', 'clamd'],
-                    capture_output=True,
-                    text=True,
-                    timeout=5
-                )
-                result['service_running'] = service_check.stdout.strip() == 'active'
-            except Exception:
-                pass
+            pass
 
         # Get database info
         try:
@@ -161,22 +153,16 @@ class SecurityService:
     def install_clamav(cls) -> Dict:
         """Install ClamAV packages."""
         try:
-            # Detect package manager
-            if os.path.exists('/usr/bin/apt'):
-                install_cmd = ['apt', 'install', '-y', 'clamav', 'clamav-daemon', 'clamav-freshclam']
-            elif os.path.exists('/usr/bin/dnf'):
-                install_cmd = ['dnf', 'install', '-y', 'clamav', 'clamd', 'clamav-update']
-            elif os.path.exists('/usr/bin/yum'):
-                install_cmd = ['yum', 'install', '-y', 'clamav', 'clamd', 'clamav-update']
-            else:
+            manager = PackageManager.detect()
+            if manager is None:
                 return {'success': False, 'error': 'Unsupported package manager'}
 
-            result = subprocess.run(
-                install_cmd,
-                capture_output=True,
-                text=True,
-                timeout=300
-            )
+            if manager == 'apt':
+                packages = ['clamav', 'clamav-daemon', 'clamav-freshclam']
+            else:
+                packages = ['clamav', 'clamd', 'clamav-update']
+
+            result = PackageManager.install(packages, timeout=300)
 
             if result.returncode != 0:
                 return {'success': False, 'error': result.stderr}
@@ -196,7 +182,7 @@ class SecurityService:
         """Update ClamAV virus definitions."""
         try:
             # Stop freshclam if running to avoid conflicts
-            subprocess.run(['systemctl', 'stop', 'clamav-freshclam'], capture_output=True, timeout=10)
+            ServiceControl.stop('clamav-freshclam', timeout=10)
 
             result = subprocess.run(
                 ['freshclam'],
@@ -206,7 +192,7 @@ class SecurityService:
             )
 
             # Restart freshclam
-            subprocess.run(['systemctl', 'start', 'clamav-freshclam'], capture_output=True, timeout=10)
+            ServiceControl.start('clamav-freshclam', timeout=10)
 
             if result.returncode == 0:
                 return {'success': True, 'message': 'Definitions updated', 'output': result.stdout}
@@ -838,13 +824,7 @@ class SecurityService:
 
         if result['installed']:
             try:
-                service_check = subprocess.run(
-                    ['systemctl', 'is-active', 'fail2ban'],
-                    capture_output=True,
-                    text=True,
-                    timeout=5
-                )
-                result['service_running'] = service_check.stdout.strip() == 'active'
+                result['service_running'] = ServiceControl.is_active('fail2ban')
             except Exception:
                 pass
 
@@ -871,27 +851,17 @@ class SecurityService:
     def install_fail2ban(cls) -> Dict:
         """Install Fail2ban."""
         try:
-            if os.path.exists('/usr/bin/apt'):
-                install_cmd = ['apt', 'install', '-y', 'fail2ban']
-            elif os.path.exists('/usr/bin/dnf'):
-                install_cmd = ['dnf', 'install', '-y', 'fail2ban']
-            elif os.path.exists('/usr/bin/yum'):
-                install_cmd = ['yum', 'install', '-y', 'fail2ban']
-            else:
+            manager = PackageManager.detect()
+            if manager is None:
                 return {'success': False, 'error': 'Unsupported package manager'}
 
-            result = subprocess.run(
-                install_cmd,
-                capture_output=True,
-                text=True,
-                timeout=300
-            )
+            result = PackageManager.install('fail2ban', timeout=300)
 
             if result.returncode != 0:
                 return {'success': False, 'error': result.stderr}
 
-            subprocess.run(['systemctl', 'enable', 'fail2ban'], capture_output=True, timeout=10)
-            subprocess.run(['systemctl', 'start', 'fail2ban'], capture_output=True, timeout=10)
+            ServiceControl.enable('fail2ban', timeout=10)
+            ServiceControl.start('fail2ban', timeout=10)
 
             return {'success': True, 'message': 'Fail2ban installed successfully'}
 
@@ -1343,12 +1313,12 @@ class SecurityService:
 
         checks['total_checks'] += 1
         try:
-            ufw_result = subprocess.run(['ufw', 'status'], capture_output=True, text=True, timeout=5)
+            ufw_result = run_privileged(['ufw', 'status'], timeout=5)
             if ufw_result.returncode == 0 and 'active' in ufw_result.stdout.lower():
                 checks['passed_checks'] += 1
                 checks['findings'].append({'severity': 'pass', 'message': 'UFW firewall is active'})
             else:
-                firewalld_result = subprocess.run(['firewall-cmd', '--state'], capture_output=True, text=True, timeout=5)
+                firewalld_result = run_privileged(['firewall-cmd', '--state'], timeout=5)
                 if firewalld_result.returncode == 0 and 'running' in firewalld_result.stdout.lower():
                     checks['passed_checks'] += 1
                     checks['findings'].append({'severity': 'pass', 'message': 'firewalld is active'})
@@ -1391,7 +1361,7 @@ class SecurityService:
 
         checks['total_checks'] += 1
         try:
-            if os.path.exists('/usr/bin/apt'):
+            if PackageManager.detect() == 'apt':
                 result = subprocess.run(['apt', 'list', '--upgradable'], capture_output=True, text=True, timeout=60)
                 if result.returncode == 0:
                     lines = [l for l in result.stdout.split('\n') if '/' in l]
@@ -1458,16 +1428,11 @@ class SecurityService:
     def install_lynis(cls) -> Dict:
         """Install Lynis security auditing tool."""
         try:
-            if os.path.exists('/usr/bin/apt'):
-                install_cmd = ['apt', 'install', '-y', 'lynis']
-            elif os.path.exists('/usr/bin/dnf'):
-                install_cmd = ['dnf', 'install', '-y', 'lynis']
-            elif os.path.exists('/usr/bin/yum'):
-                install_cmd = ['yum', 'install', '-y', 'lynis']
-            else:
+            manager = PackageManager.detect()
+            if manager is None:
                 return {'success': False, 'error': 'Unsupported package manager'}
 
-            result = subprocess.run(install_cmd, capture_output=True, text=True, timeout=300)
+            result = PackageManager.install('lynis', timeout=300)
 
             if result.returncode != 0:
                 return {'success': False, 'error': result.stderr}
@@ -1560,18 +1525,14 @@ class SecurityService:
             'settings': {}
         }
 
-        if os.path.exists('/usr/bin/apt'):
+        manager = PackageManager.detect()
+
+        if manager == 'apt':
             result['supported'] = True
             result['package'] = 'unattended-upgrades'
 
             try:
-                check = subprocess.run(
-                    ['dpkg', '-l', 'unattended-upgrades'],
-                    capture_output=True,
-                    text=True,
-                    timeout=10
-                )
-                result['installed'] = check.returncode == 0 and 'ii' in check.stdout
+                result['installed'] = PackageManager.is_installed('unattended-upgrades')
             except Exception:
                 result['installed'] = False
 
@@ -1585,14 +1546,12 @@ class SecurityService:
                 except Exception:
                     pass
 
-        elif os.path.exists('/usr/bin/dnf'):
+        elif manager == 'dnf':
             result['supported'] = True
             result['package'] = 'dnf-automatic'
 
             try:
-                check = subprocess.run(['systemctl', 'is-enabled', 'dnf-automatic.timer'],
-                                       capture_output=True, text=True, timeout=10)
-                result['enabled'] = check.stdout.strip() == 'enabled'
+                result['enabled'] = ServiceControl.is_enabled('dnf-automatic.timer')
             except Exception:
                 pass
 
@@ -1602,24 +1561,16 @@ class SecurityService:
     def install_auto_updates(cls) -> Dict:
         """Install automatic security updates package."""
         try:
-            if os.path.exists('/usr/bin/apt'):
-                result = subprocess.run(
-                    ['apt', 'install', '-y', 'unattended-upgrades', 'apt-listchanges'],
-                    capture_output=True,
-                    text=True,
-                    timeout=300
-                )
+            manager = PackageManager.detect()
+
+            if manager == 'apt':
+                result = PackageManager.install(['unattended-upgrades', 'apt-listchanges'], timeout=300)
                 if result.returncode != 0:
                     return {'success': False, 'error': result.stderr}
                 return {'success': True, 'message': 'unattended-upgrades installed'}
 
-            elif os.path.exists('/usr/bin/dnf'):
-                result = subprocess.run(
-                    ['dnf', 'install', '-y', 'dnf-automatic'],
-                    capture_output=True,
-                    text=True,
-                    timeout=300
-                )
+            elif manager == 'dnf':
+                result = PackageManager.install('dnf-automatic', timeout=300)
                 if result.returncode != 0:
                     return {'success': False, 'error': result.stderr}
                 return {'success': True, 'message': 'dnf-automatic installed'}
@@ -1635,7 +1586,9 @@ class SecurityService:
     def enable_auto_updates(cls) -> Dict:
         """Enable automatic security updates."""
         try:
-            if os.path.exists('/usr/bin/apt'):
+            manager = PackageManager.detect()
+
+            if manager == 'apt':
                 config_content = '''APT::Periodic::Update-Package-Lists "1";
 APT::Periodic::Unattended-Upgrade "1";
 APT::Periodic::AutocleanInterval "7";
@@ -1645,9 +1598,9 @@ APT::Periodic::AutocleanInterval "7";
                     f.write(config_content)
                 return {'success': True, 'message': 'Automatic updates enabled'}
 
-            elif os.path.exists('/usr/bin/dnf'):
-                subprocess.run(['systemctl', 'enable', 'dnf-automatic.timer'], capture_output=True, timeout=10)
-                subprocess.run(['systemctl', 'start', 'dnf-automatic.timer'], capture_output=True, timeout=10)
+            elif manager == 'dnf':
+                ServiceControl.enable('dnf-automatic.timer', timeout=10)
+                ServiceControl.start('dnf-automatic.timer', timeout=10)
                 return {'success': True, 'message': 'Automatic updates enabled'}
 
             return {'success': False, 'error': 'Unsupported package manager'}
@@ -1659,7 +1612,9 @@ APT::Periodic::AutocleanInterval "7";
     def disable_auto_updates(cls) -> Dict:
         """Disable automatic security updates."""
         try:
-            if os.path.exists('/usr/bin/apt'):
+            manager = PackageManager.detect()
+
+            if manager == 'apt':
                 config_content = '''APT::Periodic::Update-Package-Lists "0";
 APT::Periodic::Unattended-Upgrade "0";
 '''
@@ -1668,9 +1623,9 @@ APT::Periodic::Unattended-Upgrade "0";
                     f.write(config_content)
                 return {'success': True, 'message': 'Automatic updates disabled'}
 
-            elif os.path.exists('/usr/bin/dnf'):
-                subprocess.run(['systemctl', 'disable', 'dnf-automatic.timer'], capture_output=True, timeout=10)
-                subprocess.run(['systemctl', 'stop', 'dnf-automatic.timer'], capture_output=True, timeout=10)
+            elif manager == 'dnf':
+                ServiceControl.disable('dnf-automatic.timer', timeout=10)
+                ServiceControl.stop('dnf-automatic.timer', timeout=10)
                 return {'success': True, 'message': 'Automatic updates disabled'}
 
             return {'success': False, 'error': 'Unsupported package manager'}

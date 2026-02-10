@@ -4,6 +4,8 @@ import re
 from typing import Dict, List, Optional
 from pathlib import Path
 
+from app.utils.system import PackageManager, ServiceControl, run_privileged
+
 
 class PHPService:
     """Service for PHP-FPM management."""
@@ -85,12 +87,7 @@ env[TEMP] = /tmp
                 fpm_running = False
                 if fpm_installed:
                     try:
-                        result = subprocess.run(
-                            ['systemctl', 'is-active', f'php{version}-fpm'],
-                            capture_output=True,
-                            text=True
-                        )
-                        fpm_running = result.stdout.strip() == 'active'
+                        fpm_running = ServiceControl.is_active(f'php{version}-fpm')
                     except:
                         pass
 
@@ -135,11 +132,9 @@ env[TEMP] = /tmp
 
         try:
             # Update alternatives
-            result = subprocess.run(
-                ['sudo', 'update-alternatives', '--set', 'php', php_bin],
-                capture_output=True,
-                text=True,
-                timeout=30
+            result = run_privileged(
+                ['update-alternatives', '--set', 'php', php_bin],
+                timeout=30,
             )
 
             if result.returncode == 0:
@@ -156,19 +151,12 @@ env[TEMP] = /tmp
 
         try:
             # Add PHP repository if needed
-            subprocess.run(
-                ['sudo', 'add-apt-repository', '-y', 'ppa:ondrej/php'],
-                capture_output=True,
-                text=True,
-                timeout=120
+            run_privileged(
+                ['add-apt-repository', '-y', 'ppa:ondrej/php'],
+                timeout=120,
             )
 
-            subprocess.run(
-                ['sudo', 'apt-get', 'update'],
-                capture_output=True,
-                text=True,
-                timeout=120
-            )
+            run_privileged(['apt-get', 'update'], timeout=120)
 
             # Install PHP and common extensions
             packages = [
@@ -189,25 +177,15 @@ env[TEMP] = /tmp
                 f'php{version}-bcmath',
             ]
 
-            result = subprocess.run(
-                ['sudo', 'apt-get', 'install', '-y'] + packages,
-                capture_output=True,
-                text=True,
-                timeout=600
+            result = run_privileged(
+                ['apt-get', 'install', '-y'] + packages,
+                timeout=600,
             )
 
             if result.returncode == 0:
                 # Start FPM service
-                subprocess.run(
-                    ['sudo', 'systemctl', 'enable', f'php{version}-fpm'],
-                    capture_output=True,
-                    text=True
-                )
-                subprocess.run(
-                    ['sudo', 'systemctl', 'start', f'php{version}-fpm'],
-                    capture_output=True,
-                    text=True
-                )
+                ServiceControl.enable(f'php{version}-fpm')
+                ServiceControl.start(f'php{version}-fpm')
                 return {'success': True, 'message': f'PHP {version} installed successfully'}
 
             return {'success': False, 'error': result.stderr}
@@ -249,11 +227,9 @@ env[TEMP] = /tmp
         package = f'php{version}-{extension}'
 
         try:
-            result = subprocess.run(
-                ['sudo', 'apt-get', 'install', '-y', package],
-                capture_output=True,
-                text=True,
-                timeout=120
+            result = run_privileged(
+                ['apt-get', 'install', '-y', package],
+                timeout=120,
             )
 
             if result.returncode == 0:
@@ -344,15 +320,10 @@ env[TEMP] = /tmp
 
         try:
             # Ensure log directory exists
-            subprocess.run(['sudo', 'mkdir', '-p', '/var/log/php'], capture_output=True)
+            run_privileged(['mkdir', '-p', '/var/log/php'])
 
             # Write pool config
-            process = subprocess.run(
-                ['sudo', 'tee', pool_file],
-                input=pool_content,
-                capture_output=True,
-                text=True
-            )
+            process = run_privileged(['tee', pool_file], input=pool_content)
 
             if process.returncode == 0:
                 # Restart FPM
@@ -377,11 +348,7 @@ env[TEMP] = /tmp
             return {'success': False, 'error': 'Cannot delete default www pool'}
 
         try:
-            result = subprocess.run(
-                ['sudo', 'rm', pool_file],
-                capture_output=True,
-                text=True
-            )
+            result = run_privileged(['rm', pool_file])
 
             if result.returncode == 0:
                 cls.restart_fpm(version)
@@ -397,12 +364,7 @@ env[TEMP] = /tmp
         service = cls.PHP_FPM_SERVICE.format(version=version)
 
         try:
-            result = subprocess.run(
-                ['sudo', 'systemctl', 'restart', service],
-                capture_output=True,
-                text=True,
-                timeout=30
-            )
+            result = ServiceControl.restart(service, timeout=30)
 
             return {
                 'success': result.returncode == 0,
@@ -417,12 +379,7 @@ env[TEMP] = /tmp
         service = cls.PHP_FPM_SERVICE.format(version=version)
 
         try:
-            result = subprocess.run(
-                ['sudo', 'systemctl', 'reload', service],
-                capture_output=True,
-                text=True,
-                timeout=30
-            )
+            result = ServiceControl.reload(service, timeout=30)
 
             return {
                 'success': result.returncode == 0,

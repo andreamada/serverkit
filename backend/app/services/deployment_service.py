@@ -17,6 +17,7 @@ from datetime import datetime
 from typing import Dict, List, Optional, Callable
 
 from app import db
+from app.utils.system import ServiceControl
 from app.models.deployment import Deployment, DeploymentDiff
 from app.models.application import Application
 from app.services.build_service import BuildService
@@ -315,11 +316,7 @@ class DeploymentService:
 
             service_name = f"serverkit-{app.name}"
             try:
-                subprocess.run(
-                    ['systemctl', 'restart', service_name],
-                    capture_output=True,
-                    check=True
-                )
+                ServiceControl.restart(service_name, check=True)
             except subprocess.CalledProcessError as e:
                 return {'success': False, 'error': f'Service restart failed: {e.stderr}'}
 
@@ -468,7 +465,7 @@ class DeploymentService:
             # Restart service
             if app.app_type in ['flask', 'django']:
                 service_name = f"serverkit-{app.name}"
-                subprocess.run(['systemctl', 'restart', service_name], check=True)
+                ServiceControl.restart(service_name, check=True)
 
             return {'success': True}
 
