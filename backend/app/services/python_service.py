@@ -5,6 +5,8 @@ import json
 import secrets
 from pathlib import Path
 
+from app.utils.system import ServiceControl
+
 
 class PythonService:
     """Service for managing Python applications, virtual environments, and Gunicorn."""
@@ -391,7 +393,7 @@ application = get_wsgi_application()
                 f.write(service_content)
 
             # Reload systemd
-            subprocess.run(['systemctl', 'daemon-reload'], capture_output=True)
+            ServiceControl.daemon_reload()
 
             return {
                 'success': True,
@@ -406,18 +408,12 @@ application = get_wsgi_application()
         """Start the Gunicorn service for an app."""
         service_name = f'gunicorn-{app_name}'
         try:
-            result = subprocess.run(
-                ['systemctl', 'start', service_name],
-                capture_output=True, text=True
-            )
+            result = ServiceControl.start(service_name)
             if result.returncode != 0:
                 return {'success': False, 'error': result.stderr}
 
             # Enable on boot
-            subprocess.run(
-                ['systemctl', 'enable', service_name],
-                capture_output=True, text=True
-            )
+            ServiceControl.enable(service_name)
 
             return {'success': True, 'message': f'{app_name} started'}
         except Exception as e:
@@ -428,10 +424,7 @@ application = get_wsgi_application()
         """Stop the Gunicorn service for an app."""
         service_name = f'gunicorn-{app_name}'
         try:
-            result = subprocess.run(
-                ['systemctl', 'stop', service_name],
-                capture_output=True, text=True
-            )
+            result = ServiceControl.stop(service_name)
             if result.returncode != 0:
                 return {'success': False, 'error': result.stderr}
             return {'success': True, 'message': f'{app_name} stopped'}
@@ -443,10 +436,7 @@ application = get_wsgi_application()
         """Restart the Gunicorn service for an app."""
         service_name = f'gunicorn-{app_name}'
         try:
-            result = subprocess.run(
-                ['systemctl', 'restart', service_name],
-                capture_output=True, text=True
-            )
+            result = ServiceControl.restart(service_name)
             if result.returncode != 0:
                 return {'success': False, 'error': result.stderr}
             return {'success': True, 'message': f'{app_name} restarted'}
@@ -458,11 +448,7 @@ application = get_wsgi_application()
         """Get the status of a Gunicorn service."""
         service_name = f'gunicorn-{app_name}'
         try:
-            result = subprocess.run(
-                ['systemctl', 'is-active', service_name],
-                capture_output=True, text=True
-            )
-            status = result.stdout.strip()
+            status = 'active' if ServiceControl.is_active(service_name) else 'inactive'
 
             # Get more details
             details_result = subprocess.run(
@@ -667,15 +653,15 @@ tmp_upload_dir = None
 
         try:
             # Stop and disable service
-            subprocess.run(['systemctl', 'stop', service_name], capture_output=True)
-            subprocess.run(['systemctl', 'disable', service_name], capture_output=True)
+            ServiceControl.stop(service_name)
+            ServiceControl.disable(service_name)
 
             # Remove service file
             service_file = f'/etc/systemd/system/{service_name}.service'
             if os.path.exists(service_file):
                 os.remove(service_file)
 
-            subprocess.run(['systemctl', 'daemon-reload'], capture_output=True)
+            ServiceControl.daemon_reload()
 
             # Remove files if requested
             if remove_files and os.path.exists(app_path):

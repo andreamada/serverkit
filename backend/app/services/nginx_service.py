@@ -4,6 +4,8 @@ import re
 from typing import Dict, List, Optional
 from pathlib import Path
 
+from app.utils.system import ServiceControl, run_privileged
+
 
 class NginxService:
     """Service for Nginx configuration management."""
@@ -292,12 +294,7 @@ server {{
     def test_config(cls) -> Dict:
         """Test Nginx configuration syntax."""
         try:
-            result = subprocess.run(
-                ['sudo', cls.NGINX_BIN, '-t'],
-                capture_output=True,
-                text=True,
-                timeout=30
-            )
+            result = run_privileged([cls.NGINX_BIN, '-t'], timeout=30)
             return {
                 'success': result.returncode == 0,
                 'message': result.stderr if result.returncode == 0 else result.stderr
@@ -314,12 +311,7 @@ server {{
             return {'success': False, 'error': f"Config test failed: {test_result.get('message', test_result.get('error'))}"}
 
         try:
-            result = subprocess.run(
-                ['sudo', 'systemctl', 'reload', 'nginx'],
-                capture_output=True,
-                text=True,
-                timeout=30
-            )
+            result = ServiceControl.reload('nginx', timeout=30)
             return {
                 'success': result.returncode == 0,
                 'message': 'Nginx reloaded successfully' if result.returncode == 0 else result.stderr
@@ -331,12 +323,7 @@ server {{
     def restart(cls) -> Dict:
         """Restart Nginx service."""
         try:
-            result = subprocess.run(
-                ['sudo', 'systemctl', 'restart', 'nginx'],
-                capture_output=True,
-                text=True,
-                timeout=30
-            )
+            result = ServiceControl.restart('nginx', timeout=30)
             return {
                 'success': result.returncode == 0,
                 'message': 'Nginx restarted successfully' if result.returncode == 0 else result.stderr
@@ -348,12 +335,7 @@ server {{
     def get_status(cls) -> Dict:
         """Get Nginx service status."""
         try:
-            result = subprocess.run(
-                ['sudo', 'systemctl', 'status', 'nginx'],
-                capture_output=True,
-                text=True,
-                timeout=30
-            )
+            result = run_privileged(['systemctl', 'status', 'nginx'], timeout=30)
 
             # Parse status
             is_running = 'active (running)' in result.stdout
@@ -470,11 +452,9 @@ server {{
         config_path = os.path.join(cls.SITES_AVAILABLE, name)
         try:
             # Use sudo to write
-            process = subprocess.run(
-                ['sudo', 'tee', config_path],
+            process = run_privileged(
+                ['tee', config_path],
                 input=config,
-                capture_output=True,
-                text=True
             )
             if process.returncode != 0:
                 return {'success': False, 'error': process.stderr}
@@ -493,11 +473,7 @@ server {{
             return {'success': False, 'error': f'Site {name} not found in sites-available'}
 
         try:
-            result = subprocess.run(
-                ['sudo', 'ln', '-sf', available_path, enabled_path],
-                capture_output=True,
-                text=True
-            )
+            result = run_privileged(['ln', '-sf', available_path, enabled_path])
             if result.returncode == 0:
                 # Reload nginx
                 reload_result = cls.reload()
@@ -514,11 +490,7 @@ server {{
         enabled_path = os.path.join(cls.SITES_ENABLED, name)
 
         try:
-            result = subprocess.run(
-                ['sudo', 'rm', '-f', enabled_path],
-                capture_output=True,
-                text=True
-            )
+            result = run_privileged(['rm', '-f', enabled_path])
             if result.returncode == 0:
                 reload_result = cls.reload()
                 if reload_result['success']:
@@ -536,11 +508,7 @@ server {{
 
         available_path = os.path.join(cls.SITES_AVAILABLE, name)
         try:
-            result = subprocess.run(
-                ['sudo', 'rm', '-f', available_path],
-                capture_output=True,
-                text=True
-            )
+            result = run_privileged(['rm', '-f', available_path])
             if result.returncode == 0:
                 return {'success': True, 'message': f'Site {name} deleted'}
             return {'success': False, 'error': result.stderr}
@@ -579,11 +547,9 @@ server {{
             final_content = redirect_block + '\n' + new_content
 
             # Write updated config
-            process = subprocess.run(
-                ['sudo', 'tee', config_path],
+            process = run_privileged(
+                ['tee', config_path],
                 input=final_content,
-                capture_output=True,
-                text=True
             )
 
             if process.returncode == 0:
@@ -835,23 +801,14 @@ server {{
 
             # Write config file
             config_path = os.path.join(cls.SITES_AVAILABLE, cls.PRIVATE_URL_CONFIG_NAME)
-            process = subprocess.run(
-                ['sudo', 'tee', config_path],
-                input=config,
-                capture_output=True,
-                text=True
-            )
+            process = run_privileged(['tee', config_path], input=config)
             if process.returncode != 0:
                 return {'success': False, 'error': f'Failed to write config: {process.stderr}'}
 
             # Enable the site if not already enabled
             enabled_path = os.path.join(cls.SITES_ENABLED, cls.PRIVATE_URL_CONFIG_NAME)
             if not os.path.exists(enabled_path):
-                result = subprocess.run(
-                    ['sudo', 'ln', '-sf', config_path, enabled_path],
-                    capture_output=True,
-                    text=True
-                )
+                result = run_privileged(['ln', '-sf', config_path, enabled_path])
                 if result.returncode != 0:
                     return {'success': False, 'error': f'Failed to enable config: {result.stderr}'}
 
@@ -896,22 +853,13 @@ server {{
             config_path = os.path.join(cls.SITES_AVAILABLE, cls.GITEA_CONFIG_NAME)
 
             # Write config file
-            process = subprocess.run(
-                ['sudo', 'tee', config_path],
-                input=config,
-                capture_output=True,
-                text=True
-            )
+            process = run_privileged(['tee', config_path], input=config)
             if process.returncode != 0:
                 return {'success': False, 'error': f'Failed to write config: {process.stderr}'}
 
             # Enable the site
             enabled_path = os.path.join(cls.SITES_ENABLED, cls.GITEA_CONFIG_NAME)
-            result = subprocess.run(
-                ['sudo', 'ln', '-sf', config_path, enabled_path],
-                capture_output=True,
-                text=True
-            )
+            result = run_privileged(['ln', '-sf', config_path, enabled_path])
             if result.returncode != 0:
                 return {'success': False, 'error': f'Failed to enable config: {result.stderr}'}
 
@@ -940,11 +888,11 @@ server {{
         try:
             # Remove symlink
             enabled_path = os.path.join(cls.SITES_ENABLED, cls.GITEA_CONFIG_NAME)
-            subprocess.run(['sudo', 'rm', '-f', enabled_path], capture_output=True, text=True)
+            run_privileged(['rm', '-f', enabled_path])
 
             # Remove config file
             config_path = os.path.join(cls.SITES_AVAILABLE, cls.GITEA_CONFIG_NAME)
-            subprocess.run(['sudo', 'rm', '-f', config_path], capture_output=True, text=True)
+            run_privileged(['rm', '-f', config_path])
 
             # Reload Nginx
             cls.reload()
@@ -980,22 +928,13 @@ server {{
             config_path = os.path.join(cls.SITES_AVAILABLE, cls.WORDPRESS_CONFIG_NAME)
 
             # Write config file
-            process = subprocess.run(
-                ['sudo', 'tee', config_path],
-                input=config,
-                capture_output=True,
-                text=True
-            )
+            process = run_privileged(['tee', config_path], input=config)
             if process.returncode != 0:
                 return {'success': False, 'error': f'Failed to write config: {process.stderr}'}
 
             # Enable the site
             enabled_path = os.path.join(cls.SITES_ENABLED, cls.WORDPRESS_CONFIG_NAME)
-            result = subprocess.run(
-                ['sudo', 'ln', '-sf', config_path, enabled_path],
-                capture_output=True,
-                text=True
-            )
+            result = run_privileged(['ln', '-sf', config_path, enabled_path])
             if result.returncode != 0:
                 return {'success': False, 'error': f'Failed to enable config: {result.stderr}'}
 
@@ -1024,11 +963,11 @@ server {{
         try:
             # Remove symlink
             enabled_path = os.path.join(cls.SITES_ENABLED, cls.WORDPRESS_CONFIG_NAME)
-            subprocess.run(['sudo', 'rm', '-f', enabled_path], capture_output=True, text=True)
+            run_privileged(['rm', '-f', enabled_path])
 
             # Remove config file
             config_path = os.path.join(cls.SITES_AVAILABLE, cls.WORDPRESS_CONFIG_NAME)
-            subprocess.run(['sudo', 'rm', '-f', config_path], capture_output=True, text=True)
+            run_privileged(['rm', '-f', config_path])
 
             # Reload Nginx
             cls.reload()

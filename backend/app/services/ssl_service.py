@@ -5,6 +5,8 @@ from datetime import datetime
 from typing import Dict, List, Optional
 from pathlib import Path
 
+from app.utils.system import ServiceControl, run_privileged
+
 
 class SSLService:
     """Service for SSL certificate management with Let's Encrypt."""
@@ -30,16 +32,16 @@ class SSLService:
     def install_certbot(cls) -> Dict:
         """Install certbot if not present."""
         try:
-            # For Ubuntu/Debian
-            commands = [
-                ['sudo', 'apt-get', 'update'],
-                ['sudo', 'apt-get', 'install', '-y', 'certbot', 'python3-certbot-nginx']
-            ]
+            result = run_privileged(['apt-get', 'update'], timeout=300)
+            if result.returncode != 0:
+                return {'success': False, 'error': result.stderr}
 
-            for cmd in commands:
-                result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
-                if result.returncode != 0:
-                    return {'success': False, 'error': result.stderr}
+            result = run_privileged(
+                ['apt-get', 'install', '-y', 'certbot', 'python3-certbot-nginx'],
+                timeout=300,
+            )
+            if result.returncode != 0:
+                return {'success': False, 'error': result.stderr}
 
             return {'success': True, 'message': 'Certbot installed successfully'}
         except Exception as e:
@@ -56,7 +58,7 @@ class SSLService:
 
         try:
             # Build certbot command
-            cmd = ['sudo', cls.CERTBOT_BIN, 'certonly']
+            cmd = [cls.CERTBOT_BIN, 'certonly']
 
             if use_nginx:
                 cmd.append('--nginx')
@@ -77,7 +79,7 @@ class SSLService:
                 '--expand'
             ])
 
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+            result = run_privileged(cmd, timeout=300)
 
             if result.returncode == 0:
                 primary_domain = domains[0]
@@ -103,12 +105,12 @@ class SSLService:
     def renew_certificate(cls, domain: str = None) -> Dict:
         """Renew SSL certificate(s)."""
         try:
-            cmd = ['sudo', cls.CERTBOT_BIN, 'renew', '--non-interactive']
+            cmd = [cls.CERTBOT_BIN, 'renew', '--non-interactive']
 
             if domain:
                 cmd.extend(['--cert-name', domain])
 
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+            result = run_privileged(cmd, timeout=300)
 
             return {
                 'success': result.returncode == 0,
@@ -124,21 +126,21 @@ class SSLService:
 
         try:
             cmd = [
-                'sudo', cls.CERTBOT_BIN, 'revoke',
+                cls.CERTBOT_BIN, 'revoke',
                 '--cert-path', cert_path,
                 '--non-interactive'
             ]
 
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+            result = run_privileged(cmd, timeout=120)
 
             if result.returncode == 0:
                 # Also delete the certificate
                 delete_cmd = [
-                    'sudo', cls.CERTBOT_BIN, 'delete',
+                    cls.CERTBOT_BIN, 'delete',
                     '--cert-name', domain,
                     '--non-interactive'
                 ]
-                subprocess.run(delete_cmd, capture_output=True, text=True)
+                run_privileged(delete_cmd)
 
                 return {'success': True, 'message': f'Certificate for {domain} revoked and deleted'}
 
@@ -152,12 +154,7 @@ class SSLService:
         certificates = []
 
         try:
-            result = subprocess.run(
-                ['sudo', cls.CERTBOT_BIN, 'certificates'],
-                capture_output=True,
-                text=True,
-                timeout=60
-            )
+            result = run_privileged([cls.CERTBOT_BIN, 'certificates'], timeout=60)
 
             if result.returncode != 0:
                 return certificates
@@ -205,11 +202,9 @@ class SSLService:
 
         try:
             # Use openssl to get certificate details
-            result = subprocess.run(
-                ['sudo', 'openssl', 'x509', '-in', cert_path, '-noout',
+            result = run_privileged(
+                ['openssl', 'x509', '-in', cert_path, '-noout',
                  '-subject', '-issuer', '-dates', '-serial'],
-                capture_output=True,
-                text=True
             )
 
             if result.returncode != 0:
@@ -241,19 +236,15 @@ class SSLService:
             cert_path = f'{cls.CERTS_DIR}/{domain}/fullchain.pem'
 
             # Check expiry with openssl
-            result = subprocess.run(
-                ['sudo', 'openssl', 'x509', '-in', cert_path, '-checkend', '2592000'],  # 30 days
-                capture_output=True,
-                text=True
+            result = run_privileged(
+                ['openssl', 'x509', '-in', cert_path, '-checkend', '2592000'],
             )
 
             expiring_soon = result.returncode != 0
 
             # Get actual expiry date
-            date_result = subprocess.run(
-                ['sudo', 'openssl', 'x509', '-in', cert_path, '-noout', '-enddate'],
-                capture_output=True,
-                text=True
+            date_result = run_privileged(
+                ['openssl', 'x509', '-in', cert_path, '-noout', '-enddate'],
             )
 
             expiry_date = None
@@ -275,20 +266,12 @@ class SSLService:
         """Set up automatic certificate renewal via cron/systemd timer."""
         try:
             # Check if systemd timer exists
-            result = subprocess.run(
-                ['sudo', 'systemctl', 'is-enabled', 'certbot.timer'],
-                capture_output=True,
-                text=True
-            )
-
-            if result.returncode == 0:
+            if ServiceControl.is_enabled('certbot.timer'):
                 return {'success': True, 'message': 'Auto-renewal already configured via systemd'}
 
             # Enable systemd timer
-            enable_result = subprocess.run(
-                ['sudo', 'systemctl', 'enable', '--now', 'certbot.timer'],
-                capture_output=True,
-                text=True
+            enable_result = run_privileged(
+                ['systemctl', 'enable', '--now', 'certbot.timer'],
             )
 
             if enable_result.returncode == 0:
@@ -298,12 +281,7 @@ class SSLService:
             cron_job = '0 0,12 * * * root certbot renew --quiet --post-hook "systemctl reload nginx"'
             cron_file = '/etc/cron.d/certbot-renewal'
 
-            subprocess.run(
-                ['sudo', 'tee', cron_file],
-                input=cron_job + '\n',
-                capture_output=True,
-                text=True
-            )
+            run_privileged(['tee', cron_file], input=cron_job + '\n')
 
             return {'success': True, 'message': 'Auto-renewal configured via cron'}
 

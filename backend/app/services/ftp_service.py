@@ -3,6 +3,8 @@
 import os
 import subprocess
 import re
+
+from app.utils.system import PackageManager, ServiceControl, run_privileged
 try:
     import pwd
 except ImportError:
@@ -61,35 +63,19 @@ class FTPService:
         version = None
 
         try:
-            # Check if installed
+            # Check if installed via which or package manager
             result = subprocess.run(
-                ['which', service if service != 'proftpd' else 'proftpd'],
+                ['which', service],
                 capture_output=True, text=True
             )
             installed = result.returncode == 0
 
             if not installed:
-                # Try checking if package is installed
-                result = subprocess.run(
-                    ['dpkg', '-l', service],
-                    capture_output=True, text=True
-                )
-                installed = 'ii' in result.stdout
+                installed = PackageManager.is_installed(service)
 
             if installed:
-                # Check if running
-                result = subprocess.run(
-                    ['systemctl', 'is-active', service],
-                    capture_output=True, text=True
-                )
-                running = result.stdout.strip() == 'active'
-
-                # Check if enabled
-                result = subprocess.run(
-                    ['systemctl', 'is-enabled', service],
-                    capture_output=True, text=True
-                )
-                enabled = result.stdout.strip() == 'enabled'
+                running = ServiceControl.is_active(service)
+                enabled = ServiceControl.is_enabled(service)
 
                 # Get version
                 if service == 'vsftpd':
@@ -129,10 +115,8 @@ class FTPService:
             return {'success': False, 'error': 'Invalid action'}
 
         try:
-            result = subprocess.run(
-                ['sudo', 'systemctl', action, service],
-                capture_output=True, text=True, timeout=30
-            )
+            handler = getattr(ServiceControl, action)
+            result = handler(service, timeout=30)
 
             if result.returncode == 0:
                 return {'success': True, 'service': service, 'action': action}
@@ -609,14 +593,7 @@ class FTPService:
             return {'success': False, 'error': 'Invalid service. Use vsftpd or proftpd'}
 
         try:
-            # Update package list
-            subprocess.run(['sudo', 'apt-get', 'update'], capture_output=True, timeout=120)
-
-            # Install the service
-            result = subprocess.run(
-                ['sudo', 'apt-get', 'install', '-y', service],
-                capture_output=True, text=True, timeout=300
-            )
+            result = PackageManager.install(service)
 
             if result.returncode != 0:
                 return {'success': False, 'error': result.stderr or 'Installation failed'}
@@ -656,8 +633,8 @@ userlist_deny=NO
                     f.write('')
 
             # Enable and start the service
-            subprocess.run(['sudo', 'systemctl', 'enable', service], capture_output=True)
-            subprocess.run(['sudo', 'systemctl', 'start', service], capture_output=True)
+            ServiceControl.enable(service)
+            ServiceControl.start(service)
 
             return {
                 'success': True,
