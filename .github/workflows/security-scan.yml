@@ -1,0 +1,70 @@
+name: Security Scan
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/security-scan.yml'
+  pull_request:
+    branches: [main, dev]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/security-scan.yml'
+
+jobs:
+  # ──────────────────────────────────────────────────────────────────
+  # Job 1: Bandit — static analysis for Python security issues
+  # ──────────────────────────────────────────────────────────────────
+  bandit:
+    name: Bandit SAST
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Bandit
+        run: pip install bandit
+
+      - name: Run Bandit scan
+        working-directory: backend
+        run: |
+          echo "## Full report (MEDIUM+ severity, MEDIUM+ confidence)"
+          echo ""
+          bandit -r app/ \
+            --severity-level medium \
+            --confidence-level medium \
+            -f txt \
+            --exit-zero
+          echo ""
+          echo "---"
+          echo ""
+          echo "## Strict gate (HIGH severity, HIGH confidence, new issues only)"
+          echo "Known accepts: B602 (shell=True for build/deploy scripts),"
+          echo "  B402/B321 (FTP management feature), B202 (tarfile for backups)"
+          echo ""
+          bandit -r app/ \
+            --severity-level high \
+            --confidence-level high \
+            --skip B602,B402,B321,B202 \
+            -f txt
+
+  # ──────────────────────────────────────────────────────────────────
+  # Job 2: Safety — dependency vulnerability scanning
+  # ──────────────────────────────────────────────────────────────────
+  safety:
+    name: Safety Dependency Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Safety CLI to check for vulnerabilities
+        uses: pyupio/safety-action@v1
+        with:
+          api-key: ${{ secrets.SAFETY_API_KEY }}
+          args: --full-report
