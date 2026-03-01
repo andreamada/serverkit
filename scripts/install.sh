@@ -26,7 +26,7 @@ NC='\033[0m' # No Color
 INSTALL_DIR="/usr/local/bin"
 CONFIG_DIR="/etc/serverkit"
 SERVICE_USER="serverkit"
-GITHUB_REPO="serverkit/serverkit"
+GITHUB_REPO="jhd3197/ServerKit"
 AGENT_BINARY="serverkit-agent"
 
 # Arguments

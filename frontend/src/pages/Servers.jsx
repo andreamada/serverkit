@@ -368,7 +368,7 @@ const AddServerModal = ({ groups, onClose, onCreated }) => {
   --token "${registrationData.registration_token}"` : '';
 
     const windowsInstallScript = registrationData ? `irm ${window.location.origin}/api/v1/servers/install.ps1 | iex
-Install-ServerKitAgent -ServerUrl "${window.location.origin}" -Token "${registrationData.registration_token}"` : '';
+Install-ServerKitAgent -Server "${window.location.origin}" -Token "${registrationData.registration_token}"` : '';
 
     return (
         <div className="modal-overlay" onClick={onClose}>

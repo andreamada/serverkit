@@ -1452,9 +1452,10 @@ def get_install_script_linux():
     with open(script_path, 'r', encoding='utf-8') as f:
         content = f.read()
 
-    # Replace placeholder URLs with actual server URL
+    # Replace placeholders with actual values
     server_url = request.url_root.rstrip('/')
     content = content.replace('https://your-serverkit.com', server_url)
+    content = content.replace('jhd3197/ServerKit', GITHUB_REPO)
 
     return Response(
         content,
@@ -1486,9 +1487,10 @@ def get_install_script_windows():
     with open(script_path, 'r', encoding='utf-8') as f:
         content = f.read()
 
-    # Replace placeholder URLs with actual server URL
+    # Replace placeholders with actual values
     server_url = request.url_root.rstrip('/')
     content = content.replace('https://your-serverkit.com', server_url)
+    content = content.replace('jhd3197/ServerKit', GITHUB_REPO)
 
     return Response(
         content,

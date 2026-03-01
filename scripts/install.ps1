@@ -46,7 +46,7 @@ param(
 $InstallDir = "$env:ProgramFiles\ServerKit"
 $ConfigDir = "$env:ProgramData\ServerKit"
 $ServiceName = "ServerKitAgent"
-$GitHubRepo = "serverkit/serverkit"
+$GitHubRepo = "jhd3197/ServerKit"
 $AgentBinary = "serverkit-agent.exe"
 
 # Colors
