@@ -18,7 +18,7 @@ python run.py
 cd frontend && npm install && npm run dev
 
 # Both at once (Linux/WSL)
-./scripts/dev/start.sh
+./dev.sh
 
 # Frontend lint
 cd frontend && npm run lint
@@ -74,6 +74,14 @@ Browser → Nginx (`:80`/`:443`) → proxy_pass to Docker containers (`:8001-899
 ### Production Build
 
 The Dockerfile is multi-stage: Node 20 builds frontend, Python 3.11 serves everything via Gunicorn with GeventWebSocket workers. Built frontend is served from Flask's static folder.
+
+## Platform & Distro Awareness
+
+ServerKit deploys on Linux (bare metal, VPS, or Docker). Development may happen on Windows/macOS.
+
+- **Service layer is Linux-only** — nginx, systemctl, apt/dnf, PHP-FPM, etc. are inherently Linux. No need to abstract these for Windows.
+- **Platform-agnostic code** (config management, storage, API layer) should guard Unix-only calls like `os.chmod` with `if os.name != 'nt'` so the dev server can run locally on any OS.
+- **Distro differences matter** — use `backend/app/utils/system.py` helpers (`get_package_manager`, `is_package_installed`, `install_package`) instead of calling `apt`/`dpkg`/`dnf` directly. Not all targets are Debian-based.
 
 ## Code Style
 

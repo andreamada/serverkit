@@ -5,8 +5,15 @@ __pycache__/
 *.so
 .Python
 venv/
+.venv/
 env/
 ENV/
+.env.local
+.env.*.local
+*.key
+*.pem
+*.crt
+*.csr
 
 # Database
 *.db
