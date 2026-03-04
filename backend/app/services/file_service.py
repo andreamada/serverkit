@@ -483,14 +483,37 @@ class FileService:
             size /= 1024
         return f"{size:.1f} PB"
 
+    # Virtual/pseudo filesystem types to hide from disk usage
+    _VIRTUAL_FSTYPES = {
+        'squashfs', 'tmpfs', 'devtmpfs', 'devfs', 'overlay', 'aufs',
+        'proc', 'sysfs', 'cgroup', 'cgroup2', 'debugfs', 'tracefs',
+        'securityfs', 'pstore', 'efivarfs', 'bpf', 'fusectl',
+        'configfs', 'hugetlbfs', 'mqueue', 'ramfs', 'nsfs',
+    }
+
+    # Mount-point prefixes that are always noise
+    _SKIP_MOUNT_PREFIXES = ('/snap/', '/var/lib/docker/', '/run/')
+
     @classmethod
     def get_all_disk_mounts(cls) -> Dict:
-        """Get disk usage for all mount points."""
+        """Get disk usage for all physical mount points, deduplicated by device."""
         try:
             partitions = psutil.disk_partitions(all=False)
             mounts = []
+            seen_devices = set()
 
             for partition in partitions:
+                # Skip virtual/pseudo filesystems
+                if partition.fstype in cls._VIRTUAL_FSTYPES:
+                    continue
+                # Skip noisy mount prefixes (snaps, docker layers, etc.)
+                if any(partition.mountpoint.startswith(p) for p in cls._SKIP_MOUNT_PREFIXES):
+                    continue
+                # Deduplicate: keep only the shortest mount path per device
+                if partition.device in seen_devices:
+                    continue
+                seen_devices.add(partition.device)
+
                 try:
                     usage = psutil.disk_usage(partition.mountpoint)
                     mounts.append({
