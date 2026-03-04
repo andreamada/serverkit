@@ -59,3 +59,7 @@ boto3==1.35.0
 # SSO / OAuth
 Authlib==1.5.2
 python3-saml==1.16.0
+
+# OpenAPI documentation
+apispec==6.4.0
+apispec-webframeworks==1.2.0

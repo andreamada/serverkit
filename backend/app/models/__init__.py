@@ -17,6 +17,9 @@ from app.models.promotion_job import PromotionJob
 from app.models.sanitization_profile import SanitizationProfile
 from app.models.email_account import EmailAccount
 from app.models.oauth_identity import OAuthIdentity
+from app.models.api_key import ApiKey
+from app.models.api_usage import ApiUsageLog, ApiUsageSummary
+from app.models.event_subscription import EventSubscription, EventDelivery
 
 __all__ = [
     'User', 'Application', 'Domain', 'EnvironmentVariable', 'EnvironmentVariableHistory',
@@ -25,5 +28,6 @@ __all__ = [
     'Server', 'ServerGroup', 'ServerMetrics', 'ServerCommand', 'AgentSession', 'SecurityAlert',
     'WordPressSite', 'DatabaseSnapshot', 'SyncJob',
     'EnvironmentActivity', 'PromotionJob', 'SanitizationProfile', 'EmailAccount',
-    'OAuthIdentity'
+    'OAuthIdentity', 'ApiKey', 'ApiUsageLog', 'ApiUsageSummary',
+    'EventSubscription', 'EventDelivery'
 ]

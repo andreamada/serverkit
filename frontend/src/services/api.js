@@ -3113,6 +3113,89 @@ class ApiService {
     async getMigrationHistory() {
         return this.request('/migrations/history');
     }
+
+    // API Keys
+    async getApiKeys() {
+        return this.request('/api-keys/');
+    }
+
+    async createApiKey(data) {
+        return this.request('/api-keys/', { method: 'POST', body: data });
+    }
+
+    async getApiKey(id) {
+        return this.request(`/api-keys/${id}`);
+    }
+
+    async updateApiKey(id, data) {
+        return this.request(`/api-keys/${id}`, { method: 'PUT', body: data });
+    }
+
+    async revokeApiKey(id) {
+        return this.request(`/api-keys/${id}`, { method: 'DELETE' });
+    }
+
+    async rotateApiKey(id) {
+        return this.request(`/api-keys/${id}/rotate`, { method: 'POST' });
+    }
+
+    // Event Subscriptions (Webhooks)
+    async getEventSubscriptions() {
+        return this.request('/event-subscriptions/');
+    }
+
+    async createEventSubscription(data) {
+        return this.request('/event-subscriptions/', { method: 'POST', body: data });
+    }
+
+    async getAvailableEvents() {
+        return this.request('/event-subscriptions/events');
+    }
+
+    async getEventSubscription(id) {
+        return this.request(`/event-subscriptions/${id}`);
+    }
+
+    async updateEventSubscription(id, data) {
+        return this.request(`/event-subscriptions/${id}`, { method: 'PUT', body: data });
+    }
+
+    async deleteEventSubscription(id) {
+        return this.request(`/event-subscriptions/${id}`, { method: 'DELETE' });
+    }
+
+    async testEventSubscription(id) {
+        return this.request(`/event-subscriptions/${id}/test`, { method: 'POST' });
+    }
+
+    async getEventDeliveries(id, page = 1) {
+        return this.request(`/event-subscriptions/${id}/deliveries?page=${page}`);
+    }
+
+    async retryEventDelivery(subId, deliveryId) {
+        return this.request(`/event-subscriptions/${subId}/deliveries/${deliveryId}/retry`, { method: 'POST' });
+    }
+
+    // API Analytics
+    async getApiAnalyticsOverview(period = '24h') {
+        return this.request(`/api-analytics/overview?period=${period}`);
+    }
+
+    async getApiAnalyticsEndpoints(period = '24h', limit = 20) {
+        return this.request(`/api-analytics/endpoints?period=${period}&limit=${limit}`);
+    }
+
+    async getApiAnalyticsErrors(period = '24h') {
+        return this.request(`/api-analytics/errors?period=${period}`);
+    }
+
+    async getApiAnalyticsTimeseries(period = '24h', interval = 'hour') {
+        return this.request(`/api-analytics/timeseries?period=${period}&interval=${interval}`);
+    }
+
+    async getApiKeyUsage(keyId, period = '24h') {
+        return this.request(`/api-analytics/keys/${keyId}/usage?period=${period}`);
+    }
 }
 
 export const api = new ApiService();

@@ -44,6 +44,9 @@ class AuditLog(db.Model):
     ACTION_SSO_PROVISION = 'sso.provision'
     ACTION_SSO_LINK = 'sso.link'
     ACTION_SSO_UNLINK = 'sso.unlink'
+    ACTION_API_KEY_CREATE = 'api_key.create'
+    ACTION_API_KEY_REVOKE = 'api_key.revoke'
+    ACTION_API_KEY_ROTATE = 'api_key.rotate'
 
     def get_details(self):
         """Return parsed details JSON."""

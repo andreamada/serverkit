@@ -8,6 +8,7 @@ import UsersTab from '../components/settings/UsersTab';
 import AuditLogTab from '../components/settings/AuditLogTab';
 import SSOConfigTab from '../components/settings/SSOConfigTab';
 import MigrationHistoryTab from '../components/settings/MigrationHistoryTab';
+import ApiSettingsTab from '../components/settings/ApiSettingsTab';
 import SSOProviderIcon from '../components/SSOProviderIcon';
 import {
     Github, FileText, HelpCircle, MessageSquare, Bug, Check, Download, CheckCircle,
@@ -23,7 +24,7 @@ import {
 } from 'lucide-react';
 import ServerKitLogo from '../components/ServerKitLogo';
 
-const VALID_TABS = ['profile', 'security', 'appearance', 'notifications', 'system', 'users', 'audit', 'site', 'sso', 'migrations', 'developer', 'about'];
+const VALID_TABS = ['profile', 'security', 'appearance', 'notifications', 'system', 'users', 'audit', 'site', 'sso', 'api', 'migrations', 'developer', 'about'];
 
 const Settings = () => {
     const [activeTab, setActiveTab] = useTabParam('/settings', VALID_TABS);
@@ -157,6 +158,13 @@ const Settings = () => {
                                 SSO
                             </button>
                             <button
+                                className={`settings-nav-item ${activeTab === 'api' ? 'active' : ''}`}
+                                onClick={() => setActiveTab('api')}
+                            >
+                                <Code size={18} />
+                                API
+                            </button>
+                            <button
                                 className={`settings-nav-item ${activeTab === 'migrations' ? 'active' : ''}`}
                                 onClick={() => setActiveTab('migrations')}
                             >
@@ -200,6 +208,7 @@ const Settings = () => {
                     {activeTab === 'audit' && isAdmin && <AuditLogTab />}
                     {activeTab === 'site' && isAdmin && <SiteSettings onDevModeChange={setDevMode} />}
                     {activeTab === 'sso' && isAdmin && <SSOConfigTab />}
+                    {activeTab === 'api' && isAdmin && <ApiSettingsTab />}
                     {activeTab === 'migrations' && isAdmin && <MigrationHistoryTab />}
                     {activeTab === 'developer' && devMode && isAdmin && <IconReference />}
                     {activeTab === 'about' && <AboutSection />}

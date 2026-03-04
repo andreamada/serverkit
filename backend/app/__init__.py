@@ -13,6 +13,7 @@ db = SQLAlchemy()
 jwt = JWTManager()
 migrate = Migrate()
 limiter = Limiter(key_func=get_remote_address, default_limits=["100 per minute"])
+# Note: key_func is updated to get_rate_limit_key after app init
 socketio = None
 
 # Path to frontend dist folder (relative to backend folder)
@@ -42,13 +43,26 @@ def create_app(config_name=None):
         app,
         origins=app.config['CORS_ORIGINS'],
         supports_credentials=True,
-        allow_headers=['Content-Type', 'Authorization', 'X-Requested-With'],
+        allow_headers=['Content-Type', 'Authorization', 'X-Requested-With', 'X-API-Key'],
         methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH']
     )
 
     # Register security headers middleware
     from app.middleware.security import register_security_headers
     register_security_headers(app)
+
+    # Register API key authentication middleware
+    from app.middleware.api_key_auth import register_api_key_auth
+    register_api_key_auth(app)
+
+    # Register API analytics middleware
+    from app.middleware.api_analytics import register_api_analytics
+    register_api_analytics(app)
+
+    # Update rate limiter with custom key function
+    from app.middleware.rate_limit import get_rate_limit_key, register_rate_limit_headers
+    limiter._key_func = get_rate_limit_key
+    register_rate_limit_headers(app)
 
     # Initialize SocketIO
     from app.sockets import init_socketio
@@ -178,6 +192,16 @@ def create_app(config_name=None):
     from app.api.migrations import migrations_bp
     app.register_blueprint(migrations_bp, url_prefix='/api/v1/migrations')
 
+    # Register blueprints - API Enhancements
+    from app.api.api_keys import api_keys_bp
+    from app.api.api_analytics import api_analytics_bp
+    from app.api.event_subscriptions import event_subscriptions_bp
+    from app.api.docs import docs_bp
+    app.register_blueprint(api_keys_bp, url_prefix='/api/v1/api-keys')
+    app.register_blueprint(api_analytics_bp, url_prefix='/api/v1/api-analytics')
+    app.register_blueprint(event_subscriptions_bp, url_prefix='/api/v1/event-subscriptions')
+    app.register_blueprint(docs_bp, url_prefix='/api/v1/docs')
+
     # Register blueprints - Admin (User Management, Settings, Audit Logs)
     from app.api.admin import admin_bp
     app.register_blueprint(admin_bp, url_prefix='/api/v1/admin')
@@ -211,6 +235,13 @@ def create_app(config_name=None):
 
         # Start auto-sync scheduler for WordPress environments
         _start_auto_sync_scheduler(app)
+
+        # Start API analytics flush thread
+        from app.middleware.api_analytics import start_analytics_flush_thread
+        start_analytics_flush_thread(app)
+
+        # Start hourly analytics aggregation and event retry threads
+        _start_api_background_threads(app)
 
     # Serve frontend for root path
     @app.route('/')
@@ -312,3 +343,39 @@ def _check_auto_sync_schedules(logger):
                 )
         except Exception as e:
             logger.error(f'Auto-sync check failed for site {site.id}: {e}')
+
+
+_api_bg_thread = None
+
+
+def _start_api_background_threads(app):
+    """Start background threads for API analytics aggregation and event delivery retry."""
+    global _api_bg_thread
+    if _api_bg_thread is not None:
+        return
+
+    import threading
+    import time
+    import logging
+
+    logger = logging.getLogger(__name__)
+
+    def api_bg_loop():
+        while True:
+            try:
+                time.sleep(3600)  # Run hourly
+                with app.app_context():
+                    from app.services.api_analytics_service import ApiAnalyticsService
+                    ApiAnalyticsService.aggregate_hourly()
+
+                    from app.services.event_service import EventService
+                    EventService.retry_failed()
+            except Exception as e:
+                logger.error(f'API background thread error: {e}')
+
+    _api_bg_thread = threading.Thread(
+        target=api_bg_loop,
+        daemon=True,
+        name='api-background'
+    )
+    _api_bg_thread.start()

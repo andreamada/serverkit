@@ -46,6 +46,14 @@ class AuditService:
             ip_address=ip_address,
             user_agent=user_agent
         )
+
+        # Emit webhook event for matching audit actions
+        try:
+            from app.services.event_service import EventService
+            EventService.emit_for_audit(action, target_type, target_id, details, user_id)
+        except Exception:
+            pass  # Don't let event emission failures break audit logging
+
         return log_entry
 
     @staticmethod
