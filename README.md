@@ -18,6 +18,7 @@ English | [Español](docs/README.es.md) | [中文版](docs/README.zh-CN.md) | [P
 ![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)
 [![Discord](https://img.shields.io/discord/1470639209059455008?style=for-the-badge&logo=discord&logoColor=white&label=Discord&color=5865F2)](https://discord.gg/ZKk6tkCQfG)
 
+[![GitHub Stars](https://img.shields.io/github/stars/jhd3197/ServerKit?style=flat-square&color=f5c542)](https://github.com/jhd3197/ServerKit/stargazers)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.11+-3776AB.svg?style=flat-square&logo=python&logoColor=white)](https://python.org)
 [![React](https://img.shields.io/badge/react-18-61DAFB.svg?style=flat-square&logo=react&logoColor=black)](https://reactjs.org)
@@ -41,55 +42,89 @@ English | [Español](docs/README.es.md) | [中文版](docs/README.zh-CN.md) | [P
 
 ## 🎯 Features
 
-### Apps & Containers
+### 🚀 Apps & Deployment
 
-🐘 **PHP / WordPress** — PHP-FPM 8.x with one-click WordPress installation
+**PHP / WordPress** — PHP-FPM 8.x with one-click WordPress installation
 
-🐍 **Python Apps** — Deploy Flask and Django with Gunicorn
+**Python Apps** — Deploy Flask and Django with Gunicorn
 
-🟢 **Node.js** — PM2-managed applications with log streaming
+**Node.js** — PM2-managed applications with log streaming
 
-🐳 **Docker** — Full container and Docker Compose management
+**Docker** — Full container and Docker Compose management
 
-🔑 **Environment Variables** — Secure, encrypted per-app variable management
+**Environment Variables** — Secure, encrypted per-app variable management
 
-### Infrastructure
+**Git Deployment** — GitHub/GitLab webhooks, auto-deploy on push, branch selection, rollback, zero-downtime deployments
 
-🌐 **Domain Management** — Nginx virtual hosts with easy configuration
+### 🏗️ Infrastructure
 
-🔒 **SSL Certificates** — Automatic Let's Encrypt with auto-renewal
+**Domain Management** — Nginx virtual hosts with easy configuration
 
-🗄️ **Databases** — MySQL/MariaDB and PostgreSQL support
+**SSL Certificates** — Automatic Let's Encrypt with auto-renewal
 
-🛡️ **Firewall (UFW)** — Visual firewall rule management
+**Databases** — MySQL/MariaDB and PostgreSQL with user management and query interface
 
-⏰ **Cron Jobs** — Schedule tasks with a visual editor
+**Firewall** — UFW/firewalld with visual rule management and port presets
 
-📁 **File Manager** — Browse and edit files via web interface
+**Cron Jobs** — Schedule tasks with a visual editor
 
-📡 **FTP Server** — Manage vsftpd users and access
+**File Manager** — Browse, edit, upload, and download files via web interface
 
-### Security
+**FTP Server** — Manage vsftpd users and access
 
-🔐 **Two-Factor Auth** — TOTP-based with backup codes
+**Backup & Restore** — Automated backups to S3, Backblaze B2, or local storage with scheduling, retention policies, and one-click restore
 
-🦠 **Malware Scanning** — ClamAV integration with quarantine
+**Email Server** — Postfix + Dovecot with DKIM/SPF/DMARC, SpamAssassin, Roundcube webmail, email forwarding rules
 
-📋 **File Integrity Monitoring** — Detect unauthorized file changes
+### 🔒 Security
 
-🚨 **Security Alerts** — Real-time threat notifications
+**Two-Factor Auth** — TOTP-based with backup codes
 
-🧱 **Fail2ban & SSH** — Brute force protection and SSH key management
+**Malware Scanning** — ClamAV integration with quarantine
 
-### Monitoring & Alerts
+**File Integrity Monitoring** — Detect unauthorized file changes
 
-📊 **Real-time Metrics** — CPU, RAM, disk, network monitoring via WebSocket
+**Fail2ban & SSH** — Brute force protection, SSH key management, IP allowlist/blocklist
 
-📈 **Uptime Tracking** — Historical server uptime data
+**Vulnerability Scanning** — Lynis security audits with reports and recommendations
 
-🔔 **Notifications** — Discord, Slack, Telegram, and generic webhooks
+**Automatic Updates** — unattended-upgrades / dnf-automatic for OS-level patching
 
-🖥️ **Multi-Server** — Agent-based remote server monitoring and management
+### 🖥️ Multi-Server Management
+
+**Agent-Based Architecture** — Go agent with HMAC-SHA256 authentication and real-time WebSocket gateway
+
+**Fleet Overview** — Centralized dashboard with server grouping, tagging, and health monitoring
+
+**Remote Docker** — Manage containers, images, volumes, networks, and Compose projects across all servers
+
+**API Key Rotation** — Secure credential rotation with acknowledgment handshake
+
+**Cross-Server Metrics** — Historical metrics with comparison charts and retention policies
+
+### 📊 Monitoring & Alerts
+
+**Real-time Metrics** — CPU, RAM, disk, network monitoring via WebSocket
+
+**Uptime Tracking** — Historical server uptime data and visualization
+
+**Notifications** — Discord, Slack, Telegram, email (HTML templates), and generic webhooks
+
+**Per-User Preferences** — Individual notification channels, severity filters, and quiet hours
+
+### 👥 Team & Access Control
+
+**Multi-User** — Admin, developer, and viewer roles with team invitations
+
+**RBAC** — Granular per-feature permissions (read/write per module)
+
+**SSO & OAuth** — Google, GitHub, OpenID Connect, and SAML 2.0 with account linking
+
+**Audit Logging** — Track all user actions with detailed activity dashboard
+
+**API Keys** — Tiered API keys (standard/elevated/unlimited) with rate limiting, usage analytics, and OpenAPI documentation
+
+**Webhook Subscriptions** — Event-driven webhooks with HMAC signatures, retry logic, and custom headers
 
 ---
 
@@ -215,15 +250,23 @@ See the [Installation Guide](docs/INSTALLATION.md) for step-by-step instructions
 - [x] Databases — MySQL, PostgreSQL
 - [x] File & FTP management
 - [x] Monitoring & alerts — Metrics, webhooks, uptime tracking
-- [x] Security — 2FA, ClamAV, file integrity, Fail2ban
-- [x] Firewall — UFW integration
+- [x] Security — 2FA, ClamAV, file integrity, Fail2ban, Lynis
+- [x] Firewall — UFW/firewalld integration
 - [x] Multi-server management — Go agent, centralized dashboard
 - [x] Git deployment — Webhooks, auto-deploy, rollback, zero-downtime
-- [ ] Backup & restore — S3, Backblaze B2, scheduled backups
-- [ ] Email server — Postfix, Dovecot, DKIM/SPF/DMARC
-- [ ] Team & permissions — RBAC, audit logging
-- [ ] Mobile app — React Native with push notifications
-- [ ] Plugin marketplace — Extensions, custom widgets, themes
+- [x] Backup & restore — S3, Backblaze B2, scheduled backups
+- [x] Email server — Postfix, Dovecot, DKIM/SPF/DMARC, Roundcube
+- [x] Team & permissions — RBAC, invitations, audit logging
+- [x] API enhancements — API keys, rate limiting, OpenAPI docs, webhook subscriptions
+- [x] SSO & OAuth — Google, GitHub, OIDC, SAML
+- [x] Database migrations — Flask-Migrate/Alembic, versioned schema
+- [ ] Agent fleet management — Auto-upgrade, bulk ops, offline command queue
+- [ ] Cross-server monitoring — Fleet dashboard, anomaly detection, alerting
+- [ ] Agent plugin system — Extensible agent with custom metrics, commands, health checks
+- [ ] Server templates & config sync — Drift detection, compliance dashboards
+- [ ] Multi-tenancy — Workspaces, team isolation, per-workspace settings
+- [ ] DNS zone management — Cloudflare, Route53, DigitalOcean integrations
+- [ ] Status pages — Public status page, health checks, incident management
 
 Full details: [ROADMAP.md](ROADMAP.md)
 
@@ -246,12 +289,15 @@ Full details: [ROADMAP.md](ROADMAP.md)
 
 | Layer | Technology |
 |-------|------------|
-| Backend | Python 3.11, Flask, SQLAlchemy, Flask-SocketIO |
-| Frontend | React 18, Vite, LESS |
+| Backend | Python 3.11, Flask, SQLAlchemy, Flask-SocketIO, Flask-Migrate |
+| Frontend | React 18, Vite, LESS, Recharts |
 | Database | SQLite / PostgreSQL |
-| Web Server | Nginx, Gunicorn |
+| Web Server | Nginx, Gunicorn (GeventWebSocket) |
 | Containers | Docker, Docker Compose |
-| Security | ClamAV, TOTP (pyotp), Cryptography |
+| Security | ClamAV, Lynis, Fail2ban, TOTP (pyotp), Fernet encryption |
+| Auth | JWT, OAuth 2.0, OIDC, SAML 2.0 |
+| Email | Postfix, Dovecot, SpamAssassin, Roundcube |
+| Agent | Go (multi-server), HMAC-SHA256, WebSocket |
 
 ---
 
@@ -263,7 +309,7 @@ Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) first.
 fork → feature branch → commit → push → pull request
 ```
 
-**Priority areas:** Backup implementations, additional notification channels, UI/UX improvements, documentation.
+**Priority areas:** Agent plugin system, fleet management, DNS integrations, status pages, UI/UX improvements, documentation.
 
 ---
 
@@ -272,6 +318,12 @@ fork → feature branch → commit → push → pull request
 [![Discord](https://img.shields.io/badge/Discord-Join_Us-5865F2?style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/ZKk6tkCQfG)
 
 Join the Discord to ask questions, share feedback, or get help with your setup.
+
+---
+
+## ⭐ Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=jhd3197/ServerKit&type=Date)](https://star-history.com/#jhd3197/ServerKit&Date)
 
 ---
 
