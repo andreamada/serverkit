@@ -19,6 +19,7 @@ class User(db.Model):
     password_hash = db.Column(db.String(256), nullable=True)
     auth_provider = db.Column(db.String(50), default='local')  # local, google, github, oidc, saml
     role = db.Column(db.String(20), default='developer')  # 'admin', 'developer', 'viewer'
+    permissions = db.Column(db.Text, nullable=True)  # JSON per-feature read/write flags
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -41,6 +42,51 @@ class User(db.Model):
     # Lockout durations (progressive: 5 min, 15 min, 1 hour)
     LOCKOUT_DURATIONS = [5, 15, 60]
     MAX_FAILED_ATTEMPTS = 5
+
+    # Per-feature permission system
+    PERMISSION_FEATURES = [
+        'applications', 'databases', 'docker', 'domains', 'files',
+        'monitoring', 'backups', 'security', 'email', 'git', 'cron',
+        'terminal', 'users', 'settings', 'servers'
+    ]
+
+    ROLE_PERMISSION_TEMPLATES = {
+        'admin': {f: {'read': True, 'write': True} for f in PERMISSION_FEATURES},
+        'developer': {
+            'applications': {'read': True, 'write': True},
+            'databases': {'read': True, 'write': True},
+            'docker': {'read': True, 'write': True},
+            'domains': {'read': True, 'write': True},
+            'files': {'read': True, 'write': True},
+            'email': {'read': True, 'write': True},
+            'git': {'read': True, 'write': True},
+            'cron': {'read': True, 'write': True},
+            'monitoring': {'read': True, 'write': False},
+            'backups': {'read': True, 'write': False},
+            'security': {'read': True, 'write': False},
+            'terminal': {'read': True, 'write': False},
+            'servers': {'read': True, 'write': False},
+            'users': {'read': False, 'write': False},
+            'settings': {'read': False, 'write': False},
+        },
+        'viewer': {
+            'applications': {'read': True, 'write': False},
+            'databases': {'read': True, 'write': False},
+            'docker': {'read': True, 'write': False},
+            'domains': {'read': True, 'write': False},
+            'files': {'read': True, 'write': False},
+            'email': {'read': True, 'write': False},
+            'git': {'read': True, 'write': False},
+            'cron': {'read': True, 'write': False},
+            'monitoring': {'read': True, 'write': False},
+            'backups': {'read': True, 'write': False},
+            'security': {'read': True, 'write': False},
+            'terminal': {'read': False, 'write': False},
+            'users': {'read': False, 'write': False},
+            'settings': {'read': False, 'write': False},
+            'servers': {'read': True, 'write': False},
+        },
+    }
 
     @property
     def is_locked(self):
@@ -97,12 +143,36 @@ class User(db.Model):
     def has_password(self):
         return self.password_hash is not None
 
+    def get_permissions(self):
+        """Return resolved permissions: custom if set, otherwise role template."""
+        if self.role == self.ROLE_ADMIN:
+            return self.ROLE_PERMISSION_TEMPLATES['admin']
+        if self.permissions:
+            try:
+                return json.loads(self.permissions)
+            except (json.JSONDecodeError, TypeError):
+                pass
+        return self.ROLE_PERMISSION_TEMPLATES.get(self.role, {})
+
+    def set_permissions(self, perms_dict):
+        """Store custom permissions as JSON."""
+        self.permissions = json.dumps(perms_dict) if perms_dict else None
+
+    def has_permission(self, feature, level='read'):
+        """Check if user has a specific permission. Admin always returns True."""
+        if self.role == self.ROLE_ADMIN:
+            return True
+        perms = self.get_permissions()
+        feature_perms = perms.get(feature, {})
+        return feature_perms.get(level, False)
+
     def to_dict(self):
         return {
             'id': self.id,
             'email': self.email,
             'username': self.username,
             'role': self.role,
+            'permissions': self.get_permissions(),
             'is_active': self.is_active,
             'totp_enabled': self.totp_enabled,
             'auth_provider': self.auth_provider or 'local',

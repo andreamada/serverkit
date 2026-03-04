@@ -108,6 +108,33 @@ def developer_required(fn):
     return wrapper
 
 
+def permission_required(feature, level='read'):
+    """
+    Decorator that checks per-feature permissions.
+
+    Usage:
+        @permission_required('applications', 'write')
+        def create_app():
+            ...
+    """
+    def decorator(fn):
+        @wraps(fn)
+        @auth_required()
+        def wrapper(*args, **kwargs):
+            user = get_current_user()
+            if not user:
+                return jsonify({'error': 'User not found'}), 404
+            if not user.is_active:
+                return jsonify({'error': 'Account is deactivated'}), 403
+            if not user.has_permission(feature, level):
+                return jsonify({
+                    'error': f'Permission denied: {level} access to {feature} required'
+                }), 403
+            return fn(*args, **kwargs)
+        return wrapper
+    return decorator
+
+
 def viewer_required(fn):
     """
     Decorator that requires viewer role or higher (any valid role).

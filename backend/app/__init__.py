@@ -206,6 +206,10 @@ def create_app(config_name=None):
     from app.api.admin import admin_bp
     app.register_blueprint(admin_bp, url_prefix='/api/v1/admin')
 
+    # Register blueprints - Invitations
+    from app.api.invitations import invitations_bp
+    app.register_blueprint(invitations_bp, url_prefix='/api/v1/admin/invitations')
+
     # Register blueprints - Historical Metrics
     from app.api.metrics import metrics_bp
     app.register_blueprint(metrics_bp, url_prefix='/api/v1/metrics')

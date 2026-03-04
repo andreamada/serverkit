@@ -112,12 +112,15 @@ class MigrationService:
                         'down_revision': rev.down_revision,
                     })
                 cls._pending_migrations.reverse()
-                cls._needs_migration = len(cls._pending_migrations) > 0
-                if cls._needs_migration:
-                    logger.warning(
+                if cls._pending_migrations:
+                    logger.info(
                         f'Database migration needed: {len(cls._pending_migrations)} pending '
-                        f'(current={cls._current_revision}, head={head})'
+                        f'(current={cls._current_revision}, head={head}) — running upgrade'
                     )
+                    with app.app_context():
+                        command.upgrade(cfg, 'head')
+                    cls._current_revision = head
+                cls._needs_migration = False
             else:
                 cls._needs_migration = False
                 cls._pending_migrations = []

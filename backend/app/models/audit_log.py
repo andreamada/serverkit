@@ -47,6 +47,11 @@ class AuditLog(db.Model):
     ACTION_API_KEY_CREATE = 'api_key.create'
     ACTION_API_KEY_REVOKE = 'api_key.revoke'
     ACTION_API_KEY_ROTATE = 'api_key.rotate'
+    ACTION_INVITATION_CREATE = 'invitation.create'
+    ACTION_INVITATION_REVOKE = 'invitation.revoke'
+    ACTION_INVITATION_ACCEPT = 'invitation.accept'
+    ACTION_USER_PERMISSIONS_UPDATE = 'user.permissions_update'
+    ACTION_USER_PERMISSIONS_RESET = 'user.permissions_reset'
 
     def get_details(self):
         """Return parsed details JSON."""

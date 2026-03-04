@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import UserModal from './UserModal';
+import InvitationsTab from './InvitationsTab';
 
 const UsersTab = () => {
     const [users, setUsers] = useState([]);
@@ -252,6 +253,8 @@ const UsersTab = () => {
                     </div>
                 </div>
             )}
+
+            <InvitationsTab />
         </div>
     );
 };

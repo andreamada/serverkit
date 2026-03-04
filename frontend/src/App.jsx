@@ -149,8 +149,6 @@ function SetupRoute({ children }) {
 }
 
 function AppRoutes() {
-    const { registrationEnabled } = useAuth();
-
     return (
         <Routes>
             <Route path="/migrate" element={<DatabaseMigration />} />
@@ -169,13 +167,11 @@ function AppRoutes() {
                     <SSOCallback />
                 </PublicRoute>
             } />
-            {registrationEnabled && (
-                <Route path="/register" element={
-                    <PublicRoute>
-                        <Register />
-                    </PublicRoute>
-                } />
-            )}
+            <Route path="/register" element={
+                <PublicRoute>
+                    <Register />
+                </PublicRoute>
+            } />
             <Route path="/" element={
                 <PrivateRoute>
                     <DashboardLayout />

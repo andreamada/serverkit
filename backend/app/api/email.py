@@ -1,350 +1,427 @@
+"""Email Server API endpoints for managing mail services, domains, accounts, and DNS."""
 from flask import Blueprint, request, jsonify
-from flask_jwt_extended import jwt_required, get_jwt_identity
-from app.models import User
-from app.services.email_service import EmailService
+
+from ..middleware.rbac import admin_required, viewer_required
+from ..services.email_service import EmailService
+from ..services.dns_provider_service import DNSProviderService
+from ..services.spamassassin_service import SpamAssassinService
+from ..services.roundcube_service import RoundcubeService
+from ..services.postfix_service import PostfixService
 
 email_bp = Blueprint('email', __name__)
 
 
-def admin_required(fn):
-    """Decorator to require admin role."""
-    from functools import wraps
-
-    @wraps(fn)
-    def wrapper(*args, **kwargs):
-        current_user_id = get_jwt_identity()
-        user = User.query.get(current_user_id)
-        if not user or user.role != 'admin':
-            return jsonify({'error': 'Admin access required'}), 403
-        return fn(*args, **kwargs)
-    return wrapper
-
-
-# ==========================================
-# STATUS & CONFIG
-# ==========================================
+# ── Status & Installation ──
 
 @email_bp.route('/status', methods=['GET'])
-@jwt_required()
-def get_email_status():
-    """Get overall email server status."""
+@viewer_required
+def get_status():
+    """Get aggregate email server status."""
+    roundcube = RoundcubeService.get_status()
     status = EmailService.get_status()
+    status['roundcube'] = roundcube
     return jsonify(status), 200
 
 
-@email_bp.route('/config', methods=['GET'])
-@jwt_required()
+@email_bp.route('/install', methods=['POST'])
 @admin_required
-def get_config():
-    """Get email configuration."""
-    config = EmailService.get_config()
-    return jsonify(config), 200
+def install():
+    """Install and configure all email components."""
+    data = request.get_json() or {}
+    hostname = data.get('hostname')
+    result = EmailService.install_all(hostname)
+    return jsonify(result), 200 if result.get('success') else 500
 
 
-@email_bp.route('/config', methods=['PUT'])
-@jwt_required()
+@email_bp.route('/service/<component>/<action>', methods=['POST'])
 @admin_required
-def update_config():
-    """Update email configuration."""
+def control_service(component, action):
+    """Start/stop/restart an email component."""
+    result = EmailService.control_service(component, action)
+    return jsonify(result), 200 if result.get('success') else 400
+
+
+# ── Domains ──
+
+@email_bp.route('/domains', methods=['GET'])
+@viewer_required
+def list_domains():
+    """List all email domains."""
+    domains = EmailService.get_domains()
+    return jsonify({'domains': domains}), 200
+
+
+@email_bp.route('/domains', methods=['POST'])
+@admin_required
+def add_domain():
+    """Add an email domain."""
     data = request.get_json()
-    if not data:
-        return jsonify({'error': 'No data provided'}), 400
+    if not data or not data.get('name'):
+        return jsonify({'success': False, 'error': 'Domain name is required'}), 400
+    result = EmailService.add_domain(
+        data['name'],
+        dns_provider_id=data.get('dns_provider_id'),
+        dns_zone_id=data.get('dns_zone_id'),
+    )
+    return jsonify(result), 201 if result.get('success') else 400
 
-    result = EmailService.save_config(data)
-    return jsonify(result), 200 if result['success'] else 400
+
+@email_bp.route('/domains/<int:domain_id>', methods=['GET'])
+@viewer_required
+def get_domain(domain_id):
+    """Get domain details."""
+    result = EmailService.get_domain(domain_id)
+    if result.get('success'):
+        return jsonify(result), 200
+    return jsonify(result), 404
 
 
-# ==========================================
-# POSTFIX
-# ==========================================
-
-@email_bp.route('/postfix/install', methods=['POST'])
-@jwt_required()
+@email_bp.route('/domains/<int:domain_id>', methods=['DELETE'])
 @admin_required
-def install_postfix():
-    """Install Postfix."""
-    result = EmailService.install_postfix()
-    return jsonify(result), 200 if result['success'] else 400
-
-
-@email_bp.route('/postfix/config', methods=['GET'])
-@jwt_required()
-@admin_required
-def get_postfix_config():
-    """Get Postfix configuration."""
-    result = EmailService.get_postfix_config()
+def remove_domain(domain_id):
+    """Remove an email domain."""
+    result = EmailService.remove_domain(domain_id)
     return jsonify(result), 200 if result.get('success') else 400
 
 
-@email_bp.route('/postfix/config', methods=['PUT'])
-@jwt_required()
-@admin_required
-def update_postfix_config():
-    """Update Postfix configuration."""
-    data = request.get_json()
-    if not data:
-        return jsonify({'error': 'No data provided'}), 400
-    result = EmailService.update_postfix_config(data)
-    return jsonify(result), 200 if result['success'] else 400
+@email_bp.route('/domains/<int:domain_id>/verify-dns', methods=['POST'])
+@viewer_required
+def verify_dns(domain_id):
+    """Verify DNS records for a domain."""
+    result = EmailService.verify_dns(domain_id)
+    return jsonify(result), 200
 
 
-@email_bp.route('/queue', methods=['GET'])
-@jwt_required()
+@email_bp.route('/domains/<int:domain_id>/deploy-dns', methods=['POST'])
 @admin_required
-def get_mail_queue():
-    """Get mail queue."""
-    result = EmailService.get_mail_queue()
+def deploy_dns(domain_id):
+    """Deploy DNS records via provider API."""
+    from app.models.email import EmailDomain
+    domain = EmailDomain.query.get(domain_id)
+    if not domain:
+        return jsonify({'success': False, 'error': 'Domain not found'}), 404
+    if not domain.dns_provider_id or not domain.dns_zone_id:
+        return jsonify({'success': False, 'error': 'No DNS provider configured for this domain'}), 400
+    result = DNSProviderService.deploy_email_records(
+        domain.dns_provider_id,
+        domain.dns_zone_id,
+        domain.name,
+        domain.dkim_selector or 'default',
+        domain.dkim_public_key or '',
+    )
     return jsonify(result), 200 if result.get('success') else 400
 
 
-@email_bp.route('/queue/flush', methods=['POST'])
-@jwt_required()
-@admin_required
-def flush_mail_queue():
-    """Flush mail queue."""
-    result = EmailService.flush_mail_queue()
-    return jsonify(result), 200 if result['success'] else 400
+# ── Accounts ──
 
-
-@email_bp.route('/queue/<queue_id>', methods=['DELETE'])
-@jwt_required()
-@admin_required
-def delete_queued_message(queue_id):
-    """Delete a message from the queue."""
-    result = EmailService.delete_queued_message(queue_id)
-    return jsonify(result), 200 if result['success'] else 400
-
-
-# ==========================================
-# DOVECOT
-# ==========================================
-
-@email_bp.route('/dovecot/install', methods=['POST'])
-@jwt_required()
-@admin_required
-def install_dovecot():
-    """Install Dovecot."""
-    result = EmailService.install_dovecot()
-    return jsonify(result), 200 if result['success'] else 400
-
-
-@email_bp.route('/dovecot/config', methods=['GET'])
-@jwt_required()
-@admin_required
-def get_dovecot_config():
-    """Get Dovecot configuration."""
-    result = EmailService.get_dovecot_config()
-    return jsonify(result), 200 if result.get('success') else 400
-
-
-# ==========================================
-# EMAIL ACCOUNTS
-# ==========================================
-
-@email_bp.route('/accounts', methods=['GET'])
-@jwt_required()
-@admin_required
-def list_accounts():
-    """List all email accounts."""
-    accounts = EmailService.list_accounts()
+@email_bp.route('/domains/<int:domain_id>/accounts', methods=['GET'])
+@viewer_required
+def list_accounts(domain_id):
+    """List email accounts for a domain."""
+    accounts = EmailService.get_accounts(domain_id)
     return jsonify({'accounts': accounts}), 200
 
 
-@email_bp.route('/accounts', methods=['POST'])
-@jwt_required()
+@email_bp.route('/domains/<int:domain_id>/accounts', methods=['POST'])
 @admin_required
-def create_account():
-    """Create a new email account."""
+def create_account(domain_id):
+    """Create an email account."""
     data = request.get_json()
     if not data:
-        return jsonify({'error': 'No data provided'}), 400
-
-    required = ['email', 'password', 'domain']
-    for field in required:
-        if field not in data:
-            return jsonify({'error': f'{field} is required'}), 400
-
-    result = EmailService.create_account(
-        email=data['email'],
-        password=data['password'],
-        domain=data['domain'],
-        quota_mb=data.get('quota_mb', 1024)
+        return jsonify({'success': False, 'error': 'Request body required'}), 400
+    username = data.get('username')
+    password = data.get('password')
+    if not username or not password:
+        return jsonify({'success': False, 'error': 'Username and password are required'}), 400
+    result = EmailService.add_account(
+        domain_id,
+        username,
+        password,
+        quota_mb=data.get('quota_mb', 1024),
     )
-    return jsonify(result), 201 if result['success'] else 400
+    return jsonify(result), 201 if result.get('success') else 400
+
+
+@email_bp.route('/accounts/<int:account_id>', methods=['GET'])
+@viewer_required
+def get_account(account_id):
+    """Get account details."""
+    from app.models.email import EmailAccount
+    account = EmailAccount.query.get(account_id)
+    if not account:
+        return jsonify({'success': False, 'error': 'Account not found'}), 404
+    return jsonify({'success': True, 'account': account.to_dict()}), 200
 
 
 @email_bp.route('/accounts/<int:account_id>', methods=['PUT'])
-@jwt_required()
 @admin_required
 def update_account(account_id):
-    """Update an email account."""
-    data = request.get_json()
-    if not data:
-        return jsonify({'error': 'No data provided'}), 400
-
-    result = EmailService.update_account(account_id, **data)
-    return jsonify(result), 200 if result['success'] else 400
+    """Update account settings."""
+    data = request.get_json() or {}
+    result = EmailService.update_account(
+        account_id,
+        quota_mb=data.get('quota_mb'),
+        is_active=data.get('is_active'),
+    )
+    return jsonify(result), 200 if result.get('success') else 400
 
 
 @email_bp.route('/accounts/<int:account_id>', methods=['DELETE'])
-@jwt_required()
 @admin_required
 def delete_account(account_id):
     """Delete an email account."""
     result = EmailService.delete_account(account_id)
-    return jsonify(result), 200 if result['success'] else 400
-
-
-@email_bp.route('/accounts/<int:account_id>/forwarding', methods=['PUT'])
-@jwt_required()
-@admin_required
-def set_forwarding(account_id):
-    """Set forwarding for an email account."""
-    data = request.get_json()
-    if not data or 'forward_to' not in data:
-        return jsonify({'error': 'forward_to is required'}), 400
-
-    result = EmailService.set_forwarding(
-        account_id,
-        forward_to=data['forward_to'],
-        keep_copy=data.get('keep_copy', True)
-    )
-    return jsonify(result), 200 if result['success'] else 400
-
-
-# ==========================================
-# SPAMASSASSIN
-# ==========================================
-
-@email_bp.route('/spamassassin/install', methods=['POST'])
-@jwt_required()
-@admin_required
-def install_spamassassin():
-    """Install SpamAssassin."""
-    result = EmailService.install_spamassassin()
-    return jsonify(result), 200 if result['success'] else 400
-
-
-@email_bp.route('/spamassassin/config', methods=['GET'])
-@jwt_required()
-@admin_required
-def get_spamassassin_config():
-    """Get SpamAssassin configuration."""
-    result = EmailService.get_spamassassin_config()
     return jsonify(result), 200 if result.get('success') else 400
 
 
-@email_bp.route('/spamassassin/config', methods=['PUT'])
-@jwt_required()
+@email_bp.route('/accounts/<int:account_id>/password', methods=['POST'])
 @admin_required
-def update_spamassassin_config():
+def change_password(account_id):
+    """Change account password."""
+    data = request.get_json()
+    if not data or not data.get('password'):
+        return jsonify({'success': False, 'error': 'New password is required'}), 400
+    result = EmailService.change_password(account_id, data['password'])
+    return jsonify(result), 200 if result.get('success') else 400
+
+
+# ── Aliases ──
+
+@email_bp.route('/domains/<int:domain_id>/aliases', methods=['GET'])
+@viewer_required
+def list_aliases(domain_id):
+    """List email aliases for a domain."""
+    aliases = EmailService.get_aliases(domain_id)
+    return jsonify({'aliases': aliases}), 200
+
+
+@email_bp.route('/domains/<int:domain_id>/aliases', methods=['POST'])
+@admin_required
+def create_alias(domain_id):
+    """Create an email alias."""
+    data = request.get_json()
+    if not data or not data.get('source') or not data.get('destination'):
+        return jsonify({'success': False, 'error': 'Source and destination are required'}), 400
+    result = EmailService.add_alias(domain_id, data['source'], data['destination'])
+    return jsonify(result), 201 if result.get('success') else 400
+
+
+@email_bp.route('/aliases/<int:alias_id>', methods=['DELETE'])
+@admin_required
+def delete_alias(alias_id):
+    """Delete an email alias."""
+    result = EmailService.remove_alias(alias_id)
+    return jsonify(result), 200 if result.get('success') else 400
+
+
+# ── Forwarding Rules ──
+
+@email_bp.route('/accounts/<int:account_id>/forwarding', methods=['GET'])
+@viewer_required
+def list_forwarding(account_id):
+    """List forwarding rules for an account."""
+    rules = EmailService.get_forwarding(account_id)
+    return jsonify({'rules': rules}), 200
+
+
+@email_bp.route('/accounts/<int:account_id>/forwarding', methods=['POST'])
+@admin_required
+def create_forwarding(account_id):
+    """Create a forwarding rule."""
+    data = request.get_json()
+    if not data or not data.get('destination'):
+        return jsonify({'success': False, 'error': 'Destination is required'}), 400
+    result = EmailService.add_forwarding(
+        account_id,
+        data['destination'],
+        keep_copy=data.get('keep_copy', True),
+    )
+    return jsonify(result), 201 if result.get('success') else 400
+
+
+@email_bp.route('/forwarding/<int:rule_id>', methods=['PUT'])
+@admin_required
+def update_forwarding(rule_id):
+    """Update a forwarding rule."""
+    data = request.get_json() or {}
+    result = EmailService.update_forwarding(
+        rule_id,
+        destination=data.get('destination'),
+        keep_copy=data.get('keep_copy'),
+        is_active=data.get('is_active'),
+    )
+    return jsonify(result), 200 if result.get('success') else 400
+
+
+@email_bp.route('/forwarding/<int:rule_id>', methods=['DELETE'])
+@admin_required
+def delete_forwarding(rule_id):
+    """Delete a forwarding rule."""
+    result = EmailService.remove_forwarding(rule_id)
+    return jsonify(result), 200 if result.get('success') else 400
+
+
+# ── DNS Providers ──
+
+@email_bp.route('/dns-providers', methods=['GET'])
+@viewer_required
+def list_dns_providers():
+    """List configured DNS providers."""
+    providers = DNSProviderService.list_providers()
+    return jsonify({'providers': providers}), 200
+
+
+@email_bp.route('/dns-providers', methods=['POST'])
+@admin_required
+def add_dns_provider():
+    """Add a DNS provider."""
+    data = request.get_json()
+    if not data or not data.get('name') or not data.get('provider') or not data.get('api_key'):
+        return jsonify({'success': False, 'error': 'Name, provider, and api_key are required'}), 400
+    result = DNSProviderService.add_provider(
+        name=data['name'],
+        provider=data['provider'],
+        api_key=data['api_key'],
+        api_secret=data.get('api_secret'),
+        api_email=data.get('api_email'),
+        is_default=data.get('is_default', False),
+    )
+    return jsonify(result), 201 if result.get('success') else 400
+
+
+@email_bp.route('/dns-providers/<int:provider_id>', methods=['DELETE'])
+@admin_required
+def remove_dns_provider(provider_id):
+    """Remove a DNS provider."""
+    result = DNSProviderService.remove_provider(provider_id)
+    return jsonify(result), 200 if result.get('success') else 400
+
+
+@email_bp.route('/dns-providers/<int:provider_id>/test', methods=['POST'])
+@admin_required
+def test_dns_provider(provider_id):
+    """Test DNS provider connection."""
+    result = DNSProviderService.test_connection(provider_id)
+    return jsonify(result), 200 if result.get('success') else 400
+
+
+@email_bp.route('/dns-providers/<int:provider_id>/zones', methods=['GET'])
+@viewer_required
+def list_dns_zones(provider_id):
+    """List DNS zones from a provider."""
+    result = DNSProviderService.list_zones(provider_id)
+    return jsonify(result), 200 if result.get('success') else 400
+
+
+# ── SpamAssassin Config ──
+
+@email_bp.route('/spam/config', methods=['GET'])
+@viewer_required
+def get_spam_config():
+    """Get SpamAssassin configuration."""
+    result = SpamAssassinService.get_config()
+    return jsonify(result), 200
+
+
+@email_bp.route('/spam/config', methods=['PUT'])
+@admin_required
+def update_spam_config():
     """Update SpamAssassin configuration."""
     data = request.get_json()
     if not data:
-        return jsonify({'error': 'No data provided'}), 400
-    result = EmailService.update_spamassassin_config(data)
-    return jsonify(result), 200 if result['success'] else 400
+        return jsonify({'success': False, 'error': 'Request body required'}), 400
+    result = SpamAssassinService.configure(data)
+    if result.get('success'):
+        SpamAssassinService.reload()
+    return jsonify(result), 200 if result.get('success') else 400
 
 
-# ==========================================
-# DKIM / SPF / DMARC
-# ==========================================
-
-@email_bp.route('/dkim/install', methods=['POST'])
-@jwt_required()
+@email_bp.route('/spam/update-rules', methods=['POST'])
 @admin_required
-def install_dkim():
-    """Install OpenDKIM."""
-    result = EmailService.install_dkim()
-    return jsonify(result), 200 if result['success'] else 400
+def update_spam_rules():
+    """Update SpamAssassin rules."""
+    result = SpamAssassinService.update_rules()
+    return jsonify(result), 200 if result.get('success') else 400
 
 
-@email_bp.route('/dkim/generate', methods=['POST'])
-@jwt_required()
-@admin_required
-def generate_dkim_key():
-    """Generate DKIM key for a domain."""
-    data = request.get_json()
-    if not data or 'domain' not in data:
-        return jsonify({'error': 'domain is required'}), 400
-
-    result = EmailService.generate_dkim_key(
-        domain=data['domain'],
-        selector=data.get('selector', 'mail')
-    )
-    return jsonify(result), 200 if result['success'] else 400
-
-
-@email_bp.route('/dns/<domain>', methods=['GET'])
-@jwt_required()
-@admin_required
-def get_dns_records(domain):
-    """Get recommended DNS records for a domain."""
-    result = EmailService.get_dns_records(domain)
-    return jsonify(result), 200 if result['success'] else 400
-
-
-# ==========================================
-# SERVICE CONTROL
-# ==========================================
-
-@email_bp.route('/services/<service>/start', methods=['POST'])
-@jwt_required()
-@admin_required
-def start_service(service):
-    """Start an email service."""
-    result = EmailService.start_service(service)
-    return jsonify(result), 200 if result['success'] else 400
-
-
-@email_bp.route('/services/<service>/stop', methods=['POST'])
-@jwt_required()
-@admin_required
-def stop_service(service):
-    """Stop an email service."""
-    result = EmailService.stop_service(service)
-    return jsonify(result), 200 if result['success'] else 400
-
-
-@email_bp.route('/services/<service>/restart', methods=['POST'])
-@jwt_required()
-@admin_required
-def restart_service(service):
-    """Restart an email service."""
-    result = EmailService.restart_service(service)
-    return jsonify(result), 200 if result['success'] else 400
-
-
-# ==========================================
-# WEBMAIL
-# ==========================================
+# ── Roundcube Webmail ──
 
 @email_bp.route('/webmail/status', methods=['GET'])
-@jwt_required()
-def get_webmail_status():
-    """Get webmail installation status."""
-    status = EmailService.get_webmail_status()
-    return jsonify(status), 200
+@viewer_required
+def webmail_status():
+    """Get Roundcube webmail status."""
+    result = RoundcubeService.get_status()
+    return jsonify(result), 200
 
 
 @email_bp.route('/webmail/install', methods=['POST'])
-@jwt_required()
 @admin_required
-def install_webmail():
+def webmail_install():
     """Install Roundcube webmail."""
-    result = EmailService.install_webmail()
-    return jsonify(result), 200 if result['success'] else 400
+    data = request.get_json() or {}
+    result = RoundcubeService.install(
+        imap_host=data.get('imap_host', 'host.docker.internal'),
+        smtp_host=data.get('smtp_host', 'host.docker.internal'),
+    )
+    return jsonify(result), 200 if result.get('success') else 400
 
 
-# ==========================================
-# LOGS
-# ==========================================
+@email_bp.route('/webmail/service/<action>', methods=['POST'])
+@admin_required
+def webmail_control(action):
+    """Start/stop/restart Roundcube."""
+    actions = {
+        'start': RoundcubeService.start,
+        'stop': RoundcubeService.stop,
+        'restart': RoundcubeService.restart,
+    }
+    if action not in actions:
+        return jsonify({'success': False, 'error': 'Invalid action'}), 400
+    result = actions[action]()
+    return jsonify(result), 200 if result.get('success') else 400
+
+
+@email_bp.route('/webmail/configure-proxy', methods=['POST'])
+@admin_required
+def webmail_configure_proxy():
+    """Configure Nginx reverse proxy for Roundcube."""
+    data = request.get_json()
+    if not data or not data.get('domain'):
+        return jsonify({'success': False, 'error': 'Domain is required'}), 400
+    result = RoundcubeService.configure_nginx_proxy(data['domain'])
+    return jsonify(result), 200 if result.get('success') else 400
+
+
+# ── Mail Queue & Logs ──
+
+@email_bp.route('/queue', methods=['GET'])
+@viewer_required
+def get_queue():
+    """Get Postfix mail queue."""
+    result = PostfixService.get_queue()
+    return jsonify(result), 200
+
+
+@email_bp.route('/queue/flush', methods=['POST'])
+@admin_required
+def flush_queue():
+    """Flush the mail queue."""
+    result = PostfixService.flush_queue()
+    return jsonify(result), 200 if result.get('success') else 400
+
+
+@email_bp.route('/queue/<queue_id>', methods=['DELETE'])
+@admin_required
+def delete_queue_item(queue_id):
+    """Delete a message from the queue."""
+    result = PostfixService.delete_from_queue(queue_id)
+    return jsonify(result), 200 if result.get('success') else 400
+
 
 @email_bp.route('/logs', methods=['GET'])
-@jwt_required()
-@admin_required
-def get_mail_logs():
+@viewer_required
+def get_logs():
     """Get mail logs."""
     lines = request.args.get('lines', 100, type=int)
-    result = EmailService.get_mail_log(lines=lines)
+    result = PostfixService.get_logs(lines)
     return jsonify(result), 200

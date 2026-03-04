@@ -79,8 +79,8 @@ export function AuthProvider({ children }) {
         return data;
     }
 
-    async function register(email, username, password) {
-        const data = await api.register(email, username, password);
+    async function register(email, username, password, inviteToken) {
+        const data = await api.register(email, username, password, inviteToken);
         setUser(data.user);
         return data;
     }
@@ -112,6 +112,14 @@ export function AuthProvider({ children }) {
         return data.user;
     }
 
+    function hasPermission(feature, level = 'read') {
+        if (!user) return false;
+        if (user.role === 'admin') return true;
+        const perms = user.permissions || {};
+        const featurePerms = perms[feature] || {};
+        return !!featurePerms[level];
+    }
+
     const value = {
         user,
         setUser,
@@ -123,6 +131,7 @@ export function AuthProvider({ children }) {
         updateUser,
         refreshUser,
         refreshSetupStatus,
+        hasPermission,
         isAuthenticated: !!user,
         isAdmin: user?.role === 'admin',
         isDeveloper: user?.role === 'admin' || user?.role === 'developer',

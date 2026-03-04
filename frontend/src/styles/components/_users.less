@@ -484,3 +484,290 @@
         background: fade(@danger, 10%);
     }
 }
+
+// --------------------------------------------
+// Permission Editor
+// --------------------------------------------
+.permission-editor {
+    margin-top: @space-4;
+    border: 1px solid @border-default;
+    border-radius: @radius-md;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.permission-header-row {
+    display: grid;
+    grid-template-columns: 1fr 60px 60px;
+    gap: @space-2;
+    padding: @space-2 @space-4;
+    background: @bg-hover;
+    font-size: @font-size-xs;
+    font-weight: 600;
+    color: @text-secondary;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid @border-default;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.permission-level-label {
+    text-align: center;
+}
+
+.permission-group {
+    &:not(:last-child) {
+        border-bottom: 1px solid @border-default;
+    }
+}
+
+.permission-group-label {
+    padding: @space-2 @space-4;
+    font-size: @font-size-xs;
+    font-weight: 600;
+    color: @text-tertiary;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    background: fade(@bg-hover-raw, 50%);
+}
+
+.permission-row {
+    display: grid;
+    grid-template-columns: 1fr 60px 60px;
+    gap: @space-2;
+    align-items: center;
+    padding: @space-2 @space-4;
+
+    &:hover {
+        background: @bg-hover;
+    }
+}
+
+.permission-feature-name {
+    font-size: @font-size-sm;
+}
+
+.permission-checkbox {
+    display: flex;
+    justify-content: center;
+
+    input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+        cursor: pointer;
+    }
+}
+
+.customize-permissions-section {
+    margin-top: @space-4;
+
+    > .btn {
+        margin-bottom: @space-2;
+    }
+}
+
+// --------------------------------------------
+// Invitations Section
+// --------------------------------------------
+.invitations-section {
+    margin-top: @space-8;
+    padding-top: @space-8;
+    border-top: 1px solid @border-default;
+
+    .tab-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: @space-4;
+
+        .tab-header-content {
+            h4 {
+                margin: 0 0 @space-1 0;
+                font-size: @font-size-md;
+                font-weight: 600;
+            }
+
+            p {
+                margin: 0;
+                color: @text-secondary;
+                font-size: @font-size-sm;
+            }
+        }
+    }
+}
+
+.invite-link-display {
+    display: flex;
+    align-items: center;
+    gap: @space-2;
+    padding: @space-3;
+    background: @bg-hover;
+    border: 1px solid @border-default;
+    border-radius: @radius-md;
+    margin-top: @space-2;
+
+    code {
+        flex: 1;
+        font-family: @font-mono;
+        font-size: @font-size-sm;
+        word-break: break-all;
+        color: @text-primary;
+    }
+}
+
+.invitation-status {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 8px;
+    border-radius: @radius-full;
+    font-size: @font-size-xs;
+    font-weight: 500;
+    text-transform: capitalize;
+
+    &.pending {
+        background: fade(@accent-primary-raw, 15%);
+        color: @accent-primary;
+    }
+
+    &.accepted {
+        background: fade(@success, 15%);
+        color: @success;
+    }
+
+    &.expired {
+        background: fade(@text-tertiary-raw, 15%);
+        color: @text-tertiary;
+    }
+
+    &.revoked {
+        background: fade(@danger, 15%);
+        color: @danger;
+    }
+}
+
+// --------------------------------------------
+// Activity Tab
+// --------------------------------------------
+.activity-tab {
+    .tab-header {
+        margin-bottom: @space-6;
+
+        h3 {
+            margin: 0 0 @space-1 0;
+            font-size: @font-size-lg;
+            font-weight: 600;
+        }
+
+        p {
+            margin: 0;
+            color: @text-secondary;
+            font-size: @font-size-sm;
+        }
+    }
+}
+
+.activity-summary {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: @space-4;
+    margin-bottom: @space-6;
+
+    @media (max-width: 600px) {
+        grid-template-columns: 1fr;
+    }
+}
+
+.activity-stat-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: @space-6;
+    background: @bg-card;
+    border: 1px solid @border-default;
+    border-radius: @radius-md;
+
+    .stat-number {
+        font-size: 2rem;
+        font-weight: 700;
+        color: @accent-primary;
+        line-height: 1;
+    }
+
+    .stat-label {
+        margin-top: @space-2;
+        font-size: @font-size-sm;
+        color: @text-secondary;
+    }
+}
+
+.most-active-users {
+    margin-bottom: @space-6;
+    padding: @space-4;
+    background: @bg-card;
+    border: 1px solid @border-default;
+    border-radius: @radius-md;
+
+    h4 {
+        margin: 0 0 @space-4 0;
+        font-size: @font-size-md;
+        font-weight: 600;
+    }
+}
+
+.active-user-item {
+    display: flex;
+    align-items: center;
+    gap: @space-3;
+    padding: @space-2 0;
+
+    &:not(:last-child) {
+        border-bottom: 1px solid @border-default;
+    }
+}
+
+.active-user-rank {
+    width: 24px;
+    text-align: center;
+    font-weight: 600;
+    font-size: @font-size-sm;
+    color: @text-tertiary;
+}
+
+.active-user-name {
+    min-width: 100px;
+    font-size: @font-size-sm;
+    font-weight: 500;
+}
+
+.active-user-bar-wrapper {
+    flex: 1;
+    height: 8px;
+    background: @bg-hover;
+    border-radius: @radius-full;
+    overflow: hidden;
+}
+
+.active-user-bar {
+    height: 100%;
+    background: @accent-primary;
+    border-radius: @radius-full;
+    transition: width 0.3s ease;
+}
+
+.active-user-count {
+    min-width: 40px;
+    text-align: right;
+    font-size: @font-size-sm;
+    font-weight: 600;
+    color: @text-secondary;
+}
+
+.activity-feed-section {
+    h4 {
+        margin: 0 0 @space-4 0;
+        font-size: @font-size-md;
+        font-weight: 600;
+    }
+}

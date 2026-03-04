@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import api from '../../services/api';
+import PermissionEditor from './PermissionEditor';
 
 const UserModal = ({ user, onSave, onClose }) => {
     const [formData, setFormData] = useState({
@@ -10,6 +12,9 @@ const UserModal = ({ user, onSave, onClose }) => {
         role: 'developer',
         is_active: true
     });
+    const [permissions, setPermissions] = useState({});
+    const [showPermissions, setShowPermissions] = useState(false);
+    const [templates, setTemplates] = useState({});
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
     const { user: currentUser } = useAuth();
@@ -27,8 +32,20 @@ const UserModal = ({ user, onSave, onClose }) => {
                 role: user.role || 'developer',
                 is_active: user.is_active !== false
             });
+            if (user.permissions) {
+                setPermissions(user.permissions);
+                // Show permissions section if user has custom permissions set
+                const hasCustom = user.permissions && Object.keys(user.permissions).length > 0;
+                setShowPermissions(hasCustom);
+            }
         }
     }, [user]);
+
+    useEffect(() => {
+        api.getPermissionTemplates().then(data => {
+            setTemplates(data.templates || {});
+        }).catch(() => {});
+    }, []);
 
     function handleChange(e) {
         const { name, value, type, checked } = e.target;
@@ -36,6 +53,10 @@ const UserModal = ({ user, onSave, onClose }) => {
             ...prev,
             [name]: type === 'checkbox' ? checked : value
         }));
+        // When role changes, load template defaults for the permissions editor
+        if (name === 'role' && templates[value]) {
+            setPermissions(templates[value]);
+        }
     }
 
     async function handleSubmit(e) {
@@ -76,6 +97,11 @@ const UserModal = ({ user, onSave, onClose }) => {
             // Only include password if it's been set
             if (formData.password) {
                 userData.password = formData.password;
+            }
+
+            // Include custom permissions if editor is open and role isn't admin
+            if (showPermissions && formData.role !== 'admin') {
+                userData.permissions = permissions;
             }
 
             await onSave(userData);
@@ -208,6 +234,35 @@ const UserModal = ({ user, onSave, onClose }) => {
                                 <span className="role-desc">Read-only access to dashboards and logs</span>
                             </div>
                         </div>
+
+                        {formData.role !== 'admin' && (
+                            <div className="customize-permissions-section">
+                                <button
+                                    type="button"
+                                    className="btn btn-ghost btn-sm"
+                                    onClick={() => {
+                                        if (!showPermissions && templates[formData.role]) {
+                                            setPermissions(templates[formData.role]);
+                                        }
+                                        setShowPermissions(!showPermissions);
+                                    }}
+                                >
+                                    {showPermissions ? 'Hide' : 'Customize'} Permissions
+                                    <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" strokeWidth="2" style={{ marginLeft: 4 }}>
+                                        {showPermissions
+                                            ? <polyline points="18 15 12 9 6 15"/>
+                                            : <polyline points="6 9 12 15 18 9"/>
+                                        }
+                                    </svg>
+                                </button>
+                                {showPermissions && (
+                                    <PermissionEditor
+                                        permissions={permissions}
+                                        onChange={setPermissions}
+                                    />
+                                )}
+                            </div>
+                        )}
                     </div>
 
                     <div className="modal-footer">

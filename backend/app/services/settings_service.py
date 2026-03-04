@@ -152,14 +152,18 @@ class SettingsService:
     @staticmethod
     def migrate_legacy_roles():
         """Migrate users with 'user' role to 'developer' role."""
-        users_to_migrate = User.query.filter_by(role='user').all()
-        count = 0
-        for user in users_to_migrate:
-            user.role = User.ROLE_DEVELOPER
-            count += 1
-        if count > 0:
-            db.session.commit()
-        return count
+        try:
+            users_to_migrate = User.query.filter_by(role='user').all()
+            count = 0
+            for user in users_to_migrate:
+                user.role = User.ROLE_DEVELOPER
+                count += 1
+            if count > 0:
+                db.session.commit()
+            return count
+        except Exception:
+            db.session.rollback()
+            return 0
 
     @staticmethod
     def ensure_admin_exists():

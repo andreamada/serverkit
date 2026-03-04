@@ -1,20 +1,70 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import useTabParam from '../hooks/useTabParam';
-import api from '../services/api';
+import { api } from '../services/api';
 import { useToast } from '../contexts/ToastContext';
+import Spinner from '../components/Spinner';
+import ConfirmDialog from '../components/ConfirmDialog';
 
-const VALID_TABS = ['overview', 'accounts', 'postfix', 'dovecot', 'spam', 'authentication', 'queue', 'webmail', 'logs'];
+const VALID_TABS = ['status', 'domains', 'accounts', 'aliases', 'forwarding', 'dns-providers', 'spam', 'webmail', 'queue'];
 
-const Email = () => {
+function Email() {
     const [activeTab, setActiveTab] = useTabParam('/email', VALID_TABS);
     const [status, setStatus] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [actionLoading, setActionLoading] = useState(false);
+    const [confirmDialog, setConfirmDialog] = useState(null);
 
-    useEffect(() => {
-        loadStatus();
-    }, []);
+    // Domains
+    const [domains, setDomains] = useState([]);
+    const [showDomainForm, setShowDomainForm] = useState(false);
+    const [newDomain, setNewDomain] = useState({ name: '', dns_provider_id: '', dns_zone_id: '' });
 
-    async function loadStatus() {
+    // Accounts
+    const [selectedDomainId, setSelectedDomainId] = useState('');
+    const [accounts, setAccounts] = useState([]);
+    const [showAccountForm, setShowAccountForm] = useState(false);
+    const [newAccount, setNewAccount] = useState({ username: '', password: '', quota_mb: 1024 });
+    const [showPasswordModal, setShowPasswordModal] = useState(null);
+    const [newPassword, setNewPassword] = useState('');
+
+    // Aliases
+    const [aliases, setAliases] = useState([]);
+    const [showAliasForm, setShowAliasForm] = useState(false);
+    const [newAlias, setNewAlias] = useState({ source: '', destination: '' });
+    const [aliasDomainId, setAliasDomainId] = useState('');
+
+    // Forwarding
+    const [allAccounts, setAllAccounts] = useState([]);
+    const [selectedAccountId, setSelectedAccountId] = useState('');
+    const [forwardingRules, setForwardingRules] = useState([]);
+    const [showForwardForm, setShowForwardForm] = useState(false);
+    const [newForward, setNewForward] = useState({ destination: '', keep_copy: true });
+
+    // DNS Providers
+    const [providers, setProviders] = useState([]);
+    const [showProviderForm, setShowProviderForm] = useState(false);
+    const [newProvider, setNewProvider] = useState({ name: '', provider: 'cloudflare', api_key: '', api_secret: '', api_email: '', is_default: false });
+    const [providerZones, setProviderZones] = useState({});
+
+    // Spam
+    const [spamConfig, setSpamConfig] = useState(null);
+
+    // Webmail
+    const [webmailStatus, setWebmailStatus] = useState(null);
+    const [proxyDomain, setProxyDomain] = useState('');
+    const [installHostname, setInstallHostname] = useState('');
+
+    // Queue & Logs
+    const [queue, setQueue] = useState([]);
+    const [logs, setLogs] = useState([]);
+    const [logLines, setLogLines] = useState(100);
+
+    const toast = useToast();
+
+    useEffect(() => { loadStatus(); }, []);
+
+    const loadStatus = async () => {
+        setLoading(true);
         try {
             const data = await api.getEmailStatus();
             setStatus(data);
@@ -23,1142 +73,880 @@ const Email = () => {
         } finally {
             setLoading(false);
         }
-    }
+    };
 
-    if (loading) {
-        return <div className="page"><div className="loading">Loading email server status...</div></div>;
-    }
-
-    return (
-        <div className="page email-page">
-            <div className="page-header">
-                <div>
-                    <h1>Email Server</h1>
-                    <p className="page-subtitle">Manage Postfix, Dovecot, spam filtering, and email authentication</p>
-                </div>
-            </div>
-
-            <div className="tabs-nav tabs-nav-scrollable">
-                <button className={`tab-btn ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => setActiveTab('overview')}>
-                    Overview
-                </button>
-                <button className={`tab-btn ${activeTab === 'accounts' ? 'active' : ''}`} onClick={() => setActiveTab('accounts')}>
-                    Accounts
-                </button>
-                <button className={`tab-btn ${activeTab === 'postfix' ? 'active' : ''}`} onClick={() => setActiveTab('postfix')}>
-                    Postfix (SMTP)
-                </button>
-                <button className={`tab-btn ${activeTab === 'dovecot' ? 'active' : ''}`} onClick={() => setActiveTab('dovecot')}>
-                    Dovecot (IMAP)
-                </button>
-                <button className={`tab-btn ${activeTab === 'spam' ? 'active' : ''}`} onClick={() => setActiveTab('spam')}>
-                    Spam Filter
-                </button>
-                <button className={`tab-btn ${activeTab === 'authentication' ? 'active' : ''}`} onClick={() => setActiveTab('authentication')}>
-                    DKIM/SPF/DMARC
-                </button>
-                <button className={`tab-btn ${activeTab === 'queue' ? 'active' : ''}`} onClick={() => setActiveTab('queue')}>
-                    Mail Queue
-                </button>
-                <button className={`tab-btn ${activeTab === 'webmail' ? 'active' : ''}`} onClick={() => setActiveTab('webmail')}>
-                    Webmail
-                </button>
-                <button className={`tab-btn ${activeTab === 'logs' ? 'active' : ''}`} onClick={() => setActiveTab('logs')}>
-                    Logs
-                </button>
-            </div>
-
-            <div className="tab-content">
-                {activeTab === 'overview' && <OverviewTab status={status} onRefresh={loadStatus} />}
-                {activeTab === 'accounts' && <AccountsTab />}
-                {activeTab === 'postfix' && <PostfixTab status={status} onRefresh={loadStatus} />}
-                {activeTab === 'dovecot' && <DovecotTab status={status} onRefresh={loadStatus} />}
-                {activeTab === 'spam' && <SpamTab status={status} onRefresh={loadStatus} />}
-                {activeTab === 'authentication' && <AuthenticationTab status={status} onRefresh={loadStatus} />}
-                {activeTab === 'queue' && <QueueTab />}
-                {activeTab === 'webmail' && <WebmailTab />}
-                {activeTab === 'logs' && <LogsTab />}
-            </div>
-        </div>
-    );
-};
-
-
-// ==========================================
-// OVERVIEW TAB
-// ==========================================
-
-const OverviewTab = ({ status, onRefresh }) => {
-    const { showToast } = useToast();
-
-    const services = [
-        { key: 'postfix', label: 'Postfix', desc: 'SMTP mail transfer agent', data: status?.postfix },
-        { key: 'dovecot', label: 'Dovecot', desc: 'IMAP/POP3 server', data: status?.dovecot },
-        { key: 'spamassassin', label: 'SpamAssassin', desc: 'Spam filtering engine', data: status?.spamassassin },
-        { key: 'opendkim', label: 'OpenDKIM', desc: 'DKIM email signing', data: status?.opendkim },
-    ];
-
-    async function handleServiceAction(service, action) {
+    const loadDomains = useCallback(async () => {
         try {
-            if (action === 'start') await api.startEmailService(service);
-            else if (action === 'stop') await api.stopEmailService(service);
-            else if (action === 'restart') await api.restartEmailService(service);
-            showToast(`${service} ${action}ed successfully`, 'success');
-            onRefresh();
-        } catch (err) {
-            showToast(err.message || `Failed to ${action} ${service}`, 'error');
-        }
-    }
-
-    return (
-        <div className="email-overview">
-            <div className="services-grid">
-                {services.map(svc => (
-                    <div key={svc.key} className="card email-service-card">
-                        <div className="card-body">
-                            <div className="email-service-header">
-                                <div>
-                                    <h3>{svc.label}</h3>
-                                    <p className="text-secondary">{svc.desc}</p>
-                                </div>
-                                <span className={`badge ${svc.data?.running ? 'badge-success' : svc.data?.installed ? 'badge-warning' : 'badge-secondary'}`}>
-                                    {svc.data?.running ? 'Running' : svc.data?.installed ? 'Stopped' : 'Not Installed'}
-                                </span>
-                            </div>
-
-                            {svc.data?.version && (
-                                <div className="email-service-meta">
-                                    <span className="text-secondary">Version: {svc.data.version}</span>
-                                </div>
-                            )}
-
-                            {svc.data?.installed && (
-                                <div className="email-service-actions">
-                                    {svc.data.running ? (
-                                        <>
-                                            <button className="btn btn-sm btn-outline" onClick={() => handleServiceAction(svc.key, 'restart')}>
-                                                Restart
-                                            </button>
-                                            <button className="btn btn-sm btn-outline btn-danger" onClick={() => handleServiceAction(svc.key, 'stop')}>
-                                                Stop
-                                            </button>
-                                        </>
-                                    ) : (
-                                        <button className="btn btn-sm btn-primary" onClick={() => handleServiceAction(svc.key, 'start')}>
-                                            Start
-                                        </button>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                ))}
-            </div>
-        </div>
-    );
-};
-
-
-// ==========================================
-// ACCOUNTS TAB
-// ==========================================
-
-const AccountsTab = () => {
-    const { showToast } = useToast();
-    const [accounts, setAccounts] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [showCreate, setShowCreate] = useState(false);
-    const [editingForward, setEditingForward] = useState(null);
-    const [formData, setFormData] = useState({ email: '', password: '', domain: '', quota_mb: 1024 });
-    const [forwardData, setForwardData] = useState({ forward_to: '', keep_copy: true });
-
-    useEffect(() => {
-        loadAccounts();
+            const data = await api.getEmailDomains();
+            setDomains(data.domains || []);
+        } catch (err) { toast.error('Failed to load domains'); }
     }, []);
 
-    async function loadAccounts() {
+    useEffect(() => { if (activeTab === 'domains') loadDomains(); }, [activeTab]);
+
+    const loadAccounts = useCallback(async (domainId) => {
+        if (!domainId) return;
         try {
-            const data = await api.getEmailAccounts();
+            const data = await api.getEmailAccounts(domainId);
             setAccounts(data.accounts || []);
-        } catch (err) {
-            showToast('Failed to load accounts', 'error');
-        } finally {
-            setLoading(false);
-        }
-    }
-
-    async function handleCreate(e) {
-        e.preventDefault();
-        try {
-            const result = await api.createEmailAccount(formData);
-            if (result.success) {
-                showToast('Account created', 'success');
-                setShowCreate(false);
-                setFormData({ email: '', password: '', domain: '', quota_mb: 1024 });
-                loadAccounts();
-            } else {
-                showToast(result.error, 'error');
-            }
-        } catch (err) {
-            showToast(err.message, 'error');
-        }
-    }
-
-    async function handleDelete(accountId) {
-        if (!confirm('Delete this email account? This cannot be undone.')) return;
-        try {
-            const result = await api.deleteEmailAccount(accountId);
-            if (result.success) {
-                showToast('Account deleted', 'success');
-                loadAccounts();
-            } else {
-                showToast(result.error, 'error');
-            }
-        } catch (err) {
-            showToast(err.message, 'error');
-        }
-    }
-
-    async function handleToggle(account) {
-        try {
-            await api.updateEmailAccount(account.id, { enabled: !account.enabled });
-            showToast(`Account ${account.enabled ? 'disabled' : 'enabled'}`, 'success');
-            loadAccounts();
-        } catch (err) {
-            showToast(err.message, 'error');
-        }
-    }
-
-    async function handleForwarding(e) {
-        e.preventDefault();
-        try {
-            const result = await api.setEmailForwarding(editingForward, forwardData);
-            if (result.success) {
-                showToast('Forwarding updated', 'success');
-                setEditingForward(null);
-                loadAccounts();
-            } else {
-                showToast(result.error, 'error');
-            }
-        } catch (err) {
-            showToast(err.message, 'error');
-        }
-    }
-
-    if (loading) return <div className="loading">Loading accounts...</div>;
-
-    return (
-        <div className="email-accounts">
-            <div className="section-header">
-                <h2>Email Accounts</h2>
-                <button className="btn btn-primary" onClick={() => setShowCreate(!showCreate)}>
-                    {showCreate ? 'Cancel' : 'Create Account'}
-                </button>
-            </div>
-
-            {showCreate && (
-                <form className="card email-create-form" onSubmit={handleCreate}>
-                    <div className="card-body">
-                        <div className="form-grid">
-                            <div className="form-group">
-                                <label>Email Address</label>
-                                <input
-                                    type="email"
-                                    className="form-control"
-                                    value={formData.email}
-                                    onChange={e => setFormData({ ...formData, email: e.target.value })}
-                                    placeholder="user@example.com"
-                                    required
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label>Domain</label>
-                                <input
-                                    type="text"
-                                    className="form-control"
-                                    value={formData.domain}
-                                    onChange={e => setFormData({ ...formData, domain: e.target.value })}
-                                    placeholder="example.com"
-                                    required
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label>Password</label>
-                                <input
-                                    type="password"
-                                    className="form-control"
-                                    value={formData.password}
-                                    onChange={e => setFormData({ ...formData, password: e.target.value })}
-                                    placeholder="Strong password"
-                                    required
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label>Quota (MB)</label>
-                                <input
-                                    type="number"
-                                    className="form-control"
-                                    value={formData.quota_mb}
-                                    onChange={e => setFormData({ ...formData, quota_mb: parseInt(e.target.value) || 1024 })}
-                                    min="100"
-                                />
-                            </div>
-                        </div>
-                        <button type="submit" className="btn btn-primary" style={{ marginTop: '16px' }}>
-                            Create Account
-                        </button>
-                    </div>
-                </form>
-            )}
-
-            {accounts.length === 0 ? (
-                <div className="card">
-                    <div className="card-body empty-state">
-                        <p>No email accounts configured yet.</p>
-                    </div>
-                </div>
-            ) : (
-                <div className="table-container">
-                    <table className="table">
-                        <thead>
-                            <tr>
-                                <th>Email</th>
-                                <th>Domain</th>
-                                <th>Quota</th>
-                                <th>Forwarding</th>
-                                <th>Status</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {accounts.map(account => (
-                                <tr key={account.id}>
-                                    <td><strong>{account.email}</strong></td>
-                                    <td>{account.domain}</td>
-                                    <td>{account.quota_mb} MB</td>
-                                    <td>{account.forward_to || 'None'}</td>
-                                    <td>
-                                        <span className={`badge ${account.enabled ? 'badge-success' : 'badge-secondary'}`}>
-                                            {account.enabled ? 'Active' : 'Disabled'}
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <div className="btn-group">
-                                            <button
-                                                className="btn btn-sm btn-outline"
-                                                onClick={() => handleToggle(account)}
-                                            >
-                                                {account.enabled ? 'Disable' : 'Enable'}
-                                            </button>
-                                            <button
-                                                className="btn btn-sm btn-outline"
-                                                onClick={() => {
-                                                    setEditingForward(account.id);
-                                                    setForwardData({
-                                                        forward_to: account.forward_to || '',
-                                                        keep_copy: account.forward_keep_copy !== false,
-                                                    });
-                                                }}
-                                            >
-                                                Forward
-                                            </button>
-                                            <button
-                                                className="btn btn-sm btn-danger"
-                                                onClick={() => handleDelete(account.id)}
-                                            >
-                                                Delete
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            )}
-
-            {editingForward && (
-                <div className="modal-overlay" onClick={() => setEditingForward(null)}>
-                    <div className="modal" onClick={e => e.stopPropagation()}>
-                        <div className="modal-header">
-                            <h3>Email Forwarding</h3>
-                            <button className="modal-close" onClick={() => setEditingForward(null)}>&times;</button>
-                        </div>
-                        <form onSubmit={handleForwarding}>
-                            <div className="modal-body">
-                                <div className="form-group">
-                                    <label>Forward To</label>
-                                    <input
-                                        type="text"
-                                        className="form-control"
-                                        value={forwardData.forward_to}
-                                        onChange={e => setForwardData({ ...forwardData, forward_to: e.target.value })}
-                                        placeholder="user@other.com, user2@other.com"
-                                    />
-                                    <small className="form-help">Comma-separated email addresses. Leave empty to disable forwarding.</small>
-                                </div>
-                                <div className="form-group">
-                                    <label className="checkbox-label">
-                                        <input
-                                            type="checkbox"
-                                            checked={forwardData.keep_copy}
-                                            onChange={e => setForwardData({ ...forwardData, keep_copy: e.target.checked })}
-                                        />
-                                        Keep a copy in this mailbox
-                                    </label>
-                                </div>
-                            </div>
-                            <div className="modal-footer">
-                                <button type="button" className="btn btn-outline" onClick={() => setEditingForward(null)}>Cancel</button>
-                                <button type="submit" className="btn btn-primary">Save</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
-        </div>
-    );
-};
-
-
-// ==========================================
-// POSTFIX TAB
-// ==========================================
-
-const PostfixTab = ({ status, onRefresh }) => {
-    const { showToast } = useToast();
-    const [config, setConfig] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [installing, setInstalling] = useState(false);
-
-    useEffect(() => {
-        if (status?.postfix?.installed) loadConfig();
-        else setLoading(false);
-    }, [status]);
-
-    async function loadConfig() {
-        try {
-            const data = await api.getPostfixConfig();
-            setConfig(data.config || {});
-        } catch (err) {
-            console.error('Failed to load Postfix config:', err);
-        } finally {
-            setLoading(false);
-        }
-    }
-
-    async function handleInstall() {
-        setInstalling(true);
-        try {
-            const result = await api.installPostfix();
-            if (result.success) {
-                showToast('Postfix installed', 'success');
-                onRefresh();
-            } else {
-                showToast(result.error, 'error');
-            }
-        } catch (err) {
-            showToast(err.message, 'error');
-        } finally {
-            setInstalling(false);
-        }
-    }
-
-    async function handleSave() {
-        try {
-            const result = await api.updatePostfixConfig(config);
-            if (result.success) {
-                showToast('Configuration saved', 'success');
-            } else {
-                showToast(result.error, 'error');
-            }
-        } catch (err) {
-            showToast(err.message, 'error');
-        }
-    }
-
-    if (loading) return <div className="loading">Loading...</div>;
-
-    if (!status?.postfix?.installed) {
-        return (
-            <div className="card">
-                <div className="card-body empty-state">
-                    <h3>Postfix Not Installed</h3>
-                    <p>Postfix is a high-performance mail transfer agent (MTA) used for sending and receiving email.</p>
-                    <button
-                        className="btn btn-primary"
-                        onClick={handleInstall}
-                        disabled={installing}
-                    >
-                        {installing ? 'Installing...' : 'Install Postfix'}
-                    </button>
-                </div>
-            </div>
-        );
-    }
-
-    return (
-        <div className="email-postfix">
-            <div className="card">
-                <div className="card-header">
-                    <h3>Postfix Configuration</h3>
-                </div>
-                <div className="card-body">
-                    {config && (
-                        <div className="form-grid">
-                            {Object.entries(config).map(([key, value]) => (
-                                <div className="form-group" key={key}>
-                                    <label>{key}</label>
-                                    <input
-                                        type="text"
-                                        className="form-control"
-                                        value={value}
-                                        onChange={e => setConfig({ ...config, [key]: e.target.value })}
-                                    />
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                    <button className="btn btn-primary" onClick={handleSave} style={{ marginTop: '16px' }}>
-                        Save Configuration
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-
-// ==========================================
-// DOVECOT TAB
-// ==========================================
-
-const DovecotTab = ({ status, onRefresh }) => {
-    const { showToast } = useToast();
-    const [config, setConfig] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [installing, setInstalling] = useState(false);
-
-    useEffect(() => {
-        if (status?.dovecot?.installed) loadConfig();
-        else setLoading(false);
-    }, [status]);
-
-    async function loadConfig() {
-        try {
-            const data = await api.getDovecotConfig();
-            setConfig(data.config || {});
-        } catch (err) {
-            console.error('Failed to load Dovecot config:', err);
-        } finally {
-            setLoading(false);
-        }
-    }
-
-    async function handleInstall() {
-        setInstalling(true);
-        try {
-            const result = await api.installDovecot();
-            if (result.success) {
-                showToast('Dovecot installed', 'success');
-                onRefresh();
-            } else {
-                showToast(result.error, 'error');
-            }
-        } catch (err) {
-            showToast(err.message, 'error');
-        } finally {
-            setInstalling(false);
-        }
-    }
-
-    if (loading) return <div className="loading">Loading...</div>;
-
-    if (!status?.dovecot?.installed) {
-        return (
-            <div className="card">
-                <div className="card-body empty-state">
-                    <h3>Dovecot Not Installed</h3>
-                    <p>Dovecot is an IMAP and POP3 server that allows email clients to access mailboxes.</p>
-                    <button
-                        className="btn btn-primary"
-                        onClick={handleInstall}
-                        disabled={installing}
-                    >
-                        {installing ? 'Installing...' : 'Install Dovecot'}
-                    </button>
-                </div>
-            </div>
-        );
-    }
-
-    return (
-        <div className="email-dovecot">
-            <div className="card">
-                <div className="card-header">
-                    <h3>Dovecot Configuration</h3>
-                    <span className={`badge ${status?.dovecot?.running ? 'badge-success' : 'badge-warning'}`}>
-                        {status?.dovecot?.running ? 'Running' : 'Stopped'}
-                    </span>
-                </div>
-                <div className="card-body">
-                    {config && Object.keys(config).length > 0 ? (
-                        <div className="config-list">
-                            {Object.entries(config).map(([key, value]) => (
-                                <div className="config-item" key={key}>
-                                    <span className="config-key">{key}</span>
-                                    <span className="config-value">{value}</span>
-                                </div>
-                            ))}
-                        </div>
-                    ) : (
-                        <p className="text-secondary">Using default Dovecot configuration.</p>
-                    )}
-                </div>
-            </div>
-        </div>
-    );
-};
-
-
-// ==========================================
-// SPAM FILTER TAB
-// ==========================================
-
-const SpamTab = ({ status, onRefresh }) => {
-    const { showToast } = useToast();
-    const [config, setConfig] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [installing, setInstalling] = useState(false);
-
-    useEffect(() => {
-        if (status?.spamassassin?.installed) loadConfig();
-        else setLoading(false);
-    }, [status]);
-
-    async function loadConfig() {
-        try {
-            const data = await api.getSpamAssassinConfig();
-            setConfig(data.config || {});
-        } catch (err) {
-            console.error('Failed to load SpamAssassin config:', err);
-        } finally {
-            setLoading(false);
-        }
-    }
-
-    async function handleInstall() {
-        setInstalling(true);
-        try {
-            const result = await api.installSpamAssassin();
-            if (result.success) {
-                showToast('SpamAssassin installed', 'success');
-                onRefresh();
-            } else {
-                showToast(result.error, 'error');
-            }
-        } catch (err) {
-            showToast(err.message, 'error');
-        } finally {
-            setInstalling(false);
-        }
-    }
-
-    async function handleSave() {
-        try {
-            const result = await api.updateSpamAssassinConfig(config);
-            if (result.success) {
-                showToast('SpamAssassin configuration saved', 'success');
-            } else {
-                showToast(result.error, 'error');
-            }
-        } catch (err) {
-            showToast(err.message, 'error');
-        }
-    }
-
-    if (loading) return <div className="loading">Loading...</div>;
-
-    if (!status?.spamassassin?.installed) {
-        return (
-            <div className="card">
-                <div className="card-body empty-state">
-                    <h3>SpamAssassin Not Installed</h3>
-                    <p>SpamAssassin is a mail filter that identifies spam using content analysis and DNS blocklists.</p>
-                    <button
-                        className="btn btn-primary"
-                        onClick={handleInstall}
-                        disabled={installing}
-                    >
-                        {installing ? 'Installing...' : 'Install SpamAssassin'}
-                    </button>
-                </div>
-            </div>
-        );
-    }
-
-    return (
-        <div className="email-spam">
-            <div className="card">
-                <div className="card-header">
-                    <h3>SpamAssassin Configuration</h3>
-                </div>
-                <div className="card-body">
-                    {config && (
-                        <div className="form-grid">
-                            <div className="form-group">
-                                <label>Required Score (higher = less aggressive)</label>
-                                <input
-                                    type="number"
-                                    className="form-control"
-                                    value={config.required_score}
-                                    onChange={e => setConfig({ ...config, required_score: parseFloat(e.target.value) })}
-                                    step="0.5"
-                                    min="1"
-                                    max="10"
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label>Spam Subject Prefix</label>
-                                <input
-                                    type="text"
-                                    className="form-control"
-                                    value={config.rewrite_header_subject}
-                                    onChange={e => setConfig({ ...config, rewrite_header_subject: e.target.value })}
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label className="checkbox-label">
-                                    <input
-                                        type="checkbox"
-                                        checked={config.use_bayes}
-                                        onChange={e => setConfig({ ...config, use_bayes: e.target.checked })}
-                                    />
-                                    Enable Bayesian Filtering
-                                </label>
-                            </div>
-                            <div className="form-group">
-                                <label className="checkbox-label">
-                                    <input
-                                        type="checkbox"
-                                        checked={config.bayes_auto_learn}
-                                        onChange={e => setConfig({ ...config, bayes_auto_learn: e.target.checked })}
-                                    />
-                                    Auto-learn from messages
-                                </label>
-                            </div>
-                        </div>
-                    )}
-                    <button className="btn btn-primary" onClick={handleSave} style={{ marginTop: '16px' }}>
-                        Save Configuration
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-
-// ==========================================
-// AUTHENTICATION TAB (DKIM/SPF/DMARC)
-// ==========================================
-
-const AuthenticationTab = ({ status, onRefresh }) => {
-    const { showToast } = useToast();
-    const [domain, setDomain] = useState('');
-    const [selector, setSelector] = useState('mail');
-    const [dnsRecords, setDnsRecords] = useState(null);
-    const [installing, setInstalling] = useState(false);
-    const [generating, setGenerating] = useState(false);
-
-    async function handleInstallDkim() {
-        setInstalling(true);
-        try {
-            const result = await api.installDkim();
-            if (result.success) {
-                showToast('OpenDKIM installed', 'success');
-                onRefresh();
-            } else {
-                showToast(result.error, 'error');
-            }
-        } catch (err) {
-            showToast(err.message, 'error');
-        } finally {
-            setInstalling(false);
-        }
-    }
-
-    async function handleGenerateKey() {
-        if (!domain) {
-            showToast('Please enter a domain', 'error');
-            return;
-        }
-        setGenerating(true);
-        try {
-            const result = await api.generateDkimKey({ domain, selector });
-            if (result.success) {
-                showToast('DKIM key generated', 'success');
-                loadDnsRecords();
-            } else {
-                showToast(result.error, 'error');
-            }
-        } catch (err) {
-            showToast(err.message, 'error');
-        } finally {
-            setGenerating(false);
-        }
-    }
-
-    async function loadDnsRecords() {
-        if (!domain) return;
-        try {
-            const data = await api.getEmailDnsRecords(domain);
-            setDnsRecords(data.records || []);
-        } catch (err) {
-            showToast('Failed to load DNS records', 'error');
-        }
-    }
-
-    return (
-        <div className="email-authentication">
-            {!status?.opendkim?.installed && (
-                <div className="card">
-                    <div className="card-body empty-state">
-                        <h3>OpenDKIM Not Installed</h3>
-                        <p>DKIM signs outgoing emails to prove they were sent from your server and have not been tampered with.</p>
-                        <button
-                            className="btn btn-primary"
-                            onClick={handleInstallDkim}
-                            disabled={installing}
-                        >
-                            {installing ? 'Installing...' : 'Install OpenDKIM'}
-                        </button>
-                    </div>
-                </div>
-            )}
-
-            <div className="card">
-                <div className="card-header">
-                    <h3>Generate DKIM Key</h3>
-                </div>
-                <div className="card-body">
-                    <div className="form-grid">
-                        <div className="form-group">
-                            <label>Domain</label>
-                            <input
-                                type="text"
-                                className="form-control"
-                                value={domain}
-                                onChange={e => setDomain(e.target.value)}
-                                placeholder="example.com"
-                            />
-                        </div>
-                        <div className="form-group">
-                            <label>Selector</label>
-                            <input
-                                type="text"
-                                className="form-control"
-                                value={selector}
-                                onChange={e => setSelector(e.target.value)}
-                                placeholder="mail"
-                            />
-                        </div>
-                    </div>
-                    <div className="btn-group" style={{ marginTop: '16px' }}>
-                        <button
-                            className="btn btn-primary"
-                            onClick={handleGenerateKey}
-                            disabled={generating || !domain}
-                        >
-                            {generating ? 'Generating...' : 'Generate Key'}
-                        </button>
-                        <button
-                            className="btn btn-outline"
-                            onClick={loadDnsRecords}
-                            disabled={!domain}
-                        >
-                            Show DNS Records
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            {dnsRecords && dnsRecords.length > 0 && (
-                <div className="card">
-                    <div className="card-header">
-                        <h3>Required DNS Records</h3>
-                    </div>
-                    <div className="card-body">
-                        <p className="text-secondary" style={{ marginBottom: '16px' }}>
-                            Add these records to your DNS settings for email authentication.
-                        </p>
-                        <div className="dns-records-list">
-                            {dnsRecords.map((record, i) => (
-                                <div key={i} className="dns-record-item">
-                                    <div className="dns-record-header">
-                                        <span className="badge badge-info">{record.type}</span>
-                                        <span className="dns-record-purpose">{record.purpose}</span>
-                                    </div>
-                                    <div className="dns-record-details">
-                                        <div className="dns-field">
-                                            <span className="dns-label">Name:</span>
-                                            <code>{record.name}</code>
-                                        </div>
-                                        <div className="dns-field">
-                                            <span className="dns-label">Value:</span>
-                                            <code className="dns-value">{record.value}</code>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-            )}
-        </div>
-    );
-};
-
-
-// ==========================================
-// MAIL QUEUE TAB
-// ==========================================
-
-const QueueTab = () => {
-    const { showToast } = useToast();
-    const [queue, setQueue] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [count, setCount] = useState(0);
-
-    useEffect(() => {
-        loadQueue();
+        } catch (err) { toast.error('Failed to load accounts'); }
     }, []);
 
-    async function loadQueue() {
-        setLoading(true);
-        try {
-            const data = await api.getMailQueue();
-            setQueue(data.queue || []);
-            setCount(data.count || 0);
-        } catch (err) {
-            showToast('Failed to load mail queue', 'error');
-        } finally {
-            setLoading(false);
-        }
-    }
+    useEffect(() => { if (activeTab === 'accounts' && selectedDomainId) loadAccounts(selectedDomainId); }, [activeTab, selectedDomainId]);
+    useEffect(() => {
+        if (activeTab === 'accounts' && domains.length === 0) loadDomains();
+    }, [activeTab]);
 
-    async function handleFlush() {
+    const loadAliases = useCallback(async (domainId) => {
+        if (!domainId) return;
+        try {
+            const data = await api.getEmailAliases(domainId);
+            setAliases(data.aliases || []);
+        } catch (err) { toast.error('Failed to load aliases'); }
+    }, []);
+
+    useEffect(() => { if (activeTab === 'aliases' && aliasDomainId) loadAliases(aliasDomainId); }, [activeTab, aliasDomainId]);
+    useEffect(() => {
+        if (activeTab === 'aliases' && domains.length === 0) loadDomains();
+    }, [activeTab]);
+
+    const loadForwarding = useCallback(async (accountId) => {
+        if (!accountId) return;
+        try {
+            const data = await api.getEmailForwarding(accountId);
+            setForwardingRules(data.rules || []);
+        } catch (err) { toast.error('Failed to load forwarding rules'); }
+    }, []);
+
+    useEffect(() => {
+        if (activeTab === 'forwarding') {
+            if (domains.length === 0) loadDomains();
+            // Load all accounts from all domains
+            const loadAll = async () => {
+                try {
+                    const d = await api.getEmailDomains();
+                    const all = [];
+                    for (const dom of (d.domains || [])) {
+                        const accts = await api.getEmailAccounts(dom.id);
+                        all.push(...(accts.accounts || []).map(a => ({ ...a, domain_name: dom.name })));
+                    }
+                    setAllAccounts(all);
+                } catch (err) { console.error(err); }
+            };
+            loadAll();
+        }
+    }, [activeTab]);
+
+    useEffect(() => { if (selectedAccountId) loadForwarding(selectedAccountId); }, [selectedAccountId]);
+
+    useEffect(() => {
+        if (activeTab === 'dns-providers') {
+            api.getEmailDNSProviders().then(d => setProviders(d.providers || [])).catch(() => {});
+        }
+    }, [activeTab]);
+
+    useEffect(() => {
+        if (activeTab === 'spam') {
+            api.getSpamConfig().then(d => setSpamConfig(d.config || null)).catch(() => {});
+        }
+    }, [activeTab]);
+
+    useEffect(() => {
+        if (activeTab === 'webmail') {
+            api.getWebmailStatus().then(d => setWebmailStatus(d)).catch(() => {});
+        }
+    }, [activeTab]);
+
+    useEffect(() => {
+        if (activeTab === 'queue') {
+            api.getMailQueue().then(d => setQueue(d.queue || [])).catch(() => {});
+            api.getMailLogs(logLines).then(d => setLogs(d.logs || [])).catch(() => {});
+        }
+    }, [activeTab, logLines]);
+
+    // ── Actions ──
+
+    const handleInstall = async () => {
+        setActionLoading(true);
+        try {
+            await api.installEmailServer({ hostname: installHostname || undefined });
+            toast.success('Email server installed');
+            loadStatus();
+        } catch (err) { toast.error(err.message || 'Installation failed'); }
+        finally { setActionLoading(false); }
+    };
+
+    const handleServiceControl = async (component, action) => {
+        setActionLoading(true);
+        try {
+            await api.controlEmailService(component, action);
+            toast.success(`${component} ${action} successful`);
+            loadStatus();
+        } catch (err) { toast.error(err.message || `Failed to ${action} ${component}`); }
+        finally { setActionLoading(false); }
+    };
+
+    const handleAddDomain = async (e) => {
+        e.preventDefault();
+        setActionLoading(true);
+        try {
+            await api.addEmailDomain(newDomain);
+            toast.success('Domain added');
+            setShowDomainForm(false);
+            setNewDomain({ name: '', dns_provider_id: '', dns_zone_id: '' });
+            loadDomains();
+        } catch (err) { toast.error(err.message || 'Failed to add domain'); }
+        finally { setActionLoading(false); }
+    };
+
+    const handleDeleteDomain = (domainId, name) => {
+        setConfirmDialog({
+            message: `Delete domain "${name}" and all its accounts and aliases?`,
+            onConfirm: async () => {
+                try {
+                    await api.deleteEmailDomain(domainId);
+                    toast.success('Domain deleted');
+                    loadDomains();
+                } catch (err) { toast.error('Failed to delete domain'); }
+                setConfirmDialog(null);
+            },
+            onCancel: () => setConfirmDialog(null),
+        });
+    };
+
+    const handleVerifyDNS = async (domainId) => {
+        setActionLoading(true);
+        try {
+            const result = await api.verifyEmailDNS(domainId);
+            if (result.all_verified) toast.success('All DNS records verified');
+            else toast.error('Some DNS records are missing');
+            loadDomains();
+        } catch (err) { toast.error('DNS verification failed'); }
+        finally { setActionLoading(false); }
+    };
+
+    const handleDeployDNS = async (domainId) => {
+        setActionLoading(true);
+        try {
+            await api.deployEmailDNS(domainId);
+            toast.success('DNS records deployed');
+        } catch (err) { toast.error(err.message || 'DNS deployment failed'); }
+        finally { setActionLoading(false); }
+    };
+
+    const handleCreateAccount = async (e) => {
+        e.preventDefault();
+        setActionLoading(true);
+        try {
+            await api.createEmailAccount(selectedDomainId, newAccount);
+            toast.success('Account created');
+            setShowAccountForm(false);
+            setNewAccount({ username: '', password: '', quota_mb: 1024 });
+            loadAccounts(selectedDomainId);
+        } catch (err) { toast.error(err.message || 'Failed to create account'); }
+        finally { setActionLoading(false); }
+    };
+
+    const handleDeleteAccount = (accountId, email) => {
+        setConfirmDialog({
+            message: `Delete account "${email}"? This will remove the mailbox.`,
+            onConfirm: async () => {
+                try {
+                    await api.deleteEmailAccount(accountId);
+                    toast.success('Account deleted');
+                    loadAccounts(selectedDomainId);
+                } catch (err) { toast.error('Failed to delete account'); }
+                setConfirmDialog(null);
+            },
+            onCancel: () => setConfirmDialog(null),
+        });
+    };
+
+    const handleChangePassword = async () => {
+        if (!showPasswordModal || !newPassword) return;
+        setActionLoading(true);
+        try {
+            await api.changeEmailPassword(showPasswordModal, newPassword);
+            toast.success('Password changed');
+            setShowPasswordModal(null);
+            setNewPassword('');
+        } catch (err) { toast.error('Failed to change password'); }
+        finally { setActionLoading(false); }
+    };
+
+    const handleCreateAlias = async (e) => {
+        e.preventDefault();
+        setActionLoading(true);
+        try {
+            await api.createEmailAlias(aliasDomainId, newAlias);
+            toast.success('Alias created');
+            setShowAliasForm(false);
+            setNewAlias({ source: '', destination: '' });
+            loadAliases(aliasDomainId);
+        } catch (err) { toast.error(err.message || 'Failed to create alias'); }
+        finally { setActionLoading(false); }
+    };
+
+    const handleDeleteAlias = (aliasId) => {
+        setConfirmDialog({
+            message: 'Delete this alias?',
+            onConfirm: async () => {
+                try {
+                    await api.deleteEmailAlias(aliasId);
+                    toast.success('Alias deleted');
+                    loadAliases(aliasDomainId);
+                } catch (err) { toast.error('Failed to delete alias'); }
+                setConfirmDialog(null);
+            },
+            onCancel: () => setConfirmDialog(null),
+        });
+    };
+
+    const handleCreateForwarding = async (e) => {
+        e.preventDefault();
+        setActionLoading(true);
+        try {
+            await api.createEmailForwarding(selectedAccountId, newForward);
+            toast.success('Forwarding rule created');
+            setShowForwardForm(false);
+            setNewForward({ destination: '', keep_copy: true });
+            loadForwarding(selectedAccountId);
+        } catch (err) { toast.error(err.message || 'Failed to create forwarding rule'); }
+        finally { setActionLoading(false); }
+    };
+
+    const handleDeleteForwarding = (ruleId) => {
+        setConfirmDialog({
+            message: 'Delete this forwarding rule?',
+            onConfirm: async () => {
+                try {
+                    await api.deleteEmailForwarding(ruleId);
+                    toast.success('Rule deleted');
+                    loadForwarding(selectedAccountId);
+                } catch (err) { toast.error('Failed to delete rule'); }
+                setConfirmDialog(null);
+            },
+            onCancel: () => setConfirmDialog(null),
+        });
+    };
+
+    const handleAddProvider = async (e) => {
+        e.preventDefault();
+        setActionLoading(true);
+        try {
+            await api.addEmailDNSProvider(newProvider);
+            toast.success('DNS provider added');
+            setShowProviderForm(false);
+            setNewProvider({ name: '', provider: 'cloudflare', api_key: '', api_secret: '', api_email: '', is_default: false });
+            const d = await api.getEmailDNSProviders();
+            setProviders(d.providers || []);
+        } catch (err) { toast.error(err.message || 'Failed to add provider'); }
+        finally { setActionLoading(false); }
+    };
+
+    const handleDeleteProvider = (providerId) => {
+        setConfirmDialog({
+            message: 'Delete this DNS provider?',
+            onConfirm: async () => {
+                try {
+                    await api.deleteEmailDNSProvider(providerId);
+                    toast.success('Provider deleted');
+                    const d = await api.getEmailDNSProviders();
+                    setProviders(d.providers || []);
+                } catch (err) { toast.error('Failed to delete provider'); }
+                setConfirmDialog(null);
+            },
+            onCancel: () => setConfirmDialog(null),
+        });
+    };
+
+    const handleTestProvider = async (providerId) => {
+        setActionLoading(true);
+        try {
+            const result = await api.testEmailDNSProvider(providerId);
+            if (result.success) toast.success('Connection successful');
+            else toast.error(result.error || 'Connection failed');
+        } catch (err) { toast.error('Test failed'); }
+        finally { setActionLoading(false); }
+    };
+
+    const handleListZones = async (providerId) => {
+        try {
+            const result = await api.getEmailDNSZones(providerId);
+            setProviderZones(prev => ({ ...prev, [providerId]: result.zones || [] }));
+        } catch (err) { toast.error('Failed to list zones'); }
+    };
+
+    const handleUpdateSpam = async () => {
+        setActionLoading(true);
+        try {
+            await api.updateSpamConfig(spamConfig);
+            toast.success('SpamAssassin config updated');
+        } catch (err) { toast.error('Failed to update config'); }
+        finally { setActionLoading(false); }
+    };
+
+    const handleUpdateSpamRules = async () => {
+        setActionLoading(true);
+        try {
+            const result = await api.updateSpamRules();
+            toast.success(result.message || 'Rules updated');
+        } catch (err) { toast.error('Failed to update rules'); }
+        finally { setActionLoading(false); }
+    };
+
+    const handleWebmailInstall = async () => {
+        setActionLoading(true);
+        try {
+            await api.installWebmail({});
+            toast.success('Roundcube installed');
+            const d = await api.getWebmailStatus();
+            setWebmailStatus(d);
+        } catch (err) { toast.error('Installation failed'); }
+        finally { setActionLoading(false); }
+    };
+
+    const handleWebmailControl = async (action) => {
+        setActionLoading(true);
+        try {
+            await api.controlWebmail(action);
+            toast.success(`Roundcube ${action} successful`);
+            const d = await api.getWebmailStatus();
+            setWebmailStatus(d);
+        } catch (err) { toast.error(`Failed to ${action}`); }
+        finally { setActionLoading(false); }
+    };
+
+    const handleConfigureProxy = async () => {
+        if (!proxyDomain) return;
+        setActionLoading(true);
+        try {
+            await api.configureWebmailProxy(proxyDomain);
+            toast.success('Proxy configured');
+        } catch (err) { toast.error('Failed to configure proxy'); }
+        finally { setActionLoading(false); }
+    };
+
+    const handleFlushQueue = async () => {
+        setActionLoading(true);
         try {
             await api.flushMailQueue();
-            showToast('Queue flushed', 'success');
-            loadQueue();
-        } catch (err) {
-            showToast(err.message, 'error');
-        }
-    }
+            toast.success('Queue flushed');
+            const d = await api.getMailQueue();
+            setQueue(d.queue || []);
+        } catch (err) { toast.error('Failed to flush queue'); }
+        finally { setActionLoading(false); }
+    };
 
-    async function handleDelete(queueId) {
+    const handleDeleteQueueItem = async (queueId) => {
         try {
-            await api.deleteQueuedMessage(queueId);
-            showToast('Message deleted', 'success');
-            loadQueue();
-        } catch (err) {
-            showToast(err.message, 'error');
-        }
-    }
+            await api.deleteMailQueueItem(queueId);
+            toast.success('Message deleted');
+            const d = await api.getMailQueue();
+            setQueue(d.queue || []);
+        } catch (err) { toast.error('Failed to delete message'); }
+    };
 
-    if (loading) return <div className="loading">Loading mail queue...</div>;
+    // ── Render ──
 
-    return (
-        <div className="email-queue">
-            <div className="section-header">
-                <h2>Mail Queue ({count} messages)</h2>
-                <div className="btn-group">
-                    <button className="btn btn-outline" onClick={loadQueue}>Refresh</button>
-                    <button className="btn btn-primary" onClick={handleFlush} disabled={count === 0}>
-                        Flush Queue
-                    </button>
+    if (loading) return <div className="email-page"><div className="page-loading"><Spinner /></div></div>;
+
+    const isInstalled = status?.installed;
+
+    const ServiceCard = ({ name, data, component }) => (
+        <div className="email-service-card">
+            <div className="email-service-header">
+                <div>
+                    <h3>{name}</h3>
+                    {data?.version && <span className="version">v{data.version}</span>}
                 </div>
+                <span className={`status-badge ${data?.running ? 'online' : 'offline'}`}>
+                    {data?.running ? 'Running' : data?.installed ? 'Stopped' : 'Not Installed'}
+                </span>
             </div>
-
-            {queue.length === 0 ? (
-                <div className="card">
-                    <div className="card-body empty-state">
-                        <p>Mail queue is empty.</p>
-                    </div>
-                </div>
-            ) : (
-                <div className="table-container">
-                    <table className="table">
-                        <thead>
-                            <tr>
-                                <th>Queue ID</th>
-                                <th>Size</th>
-                                <th>Date</th>
-                                <th>Sender</th>
-                                <th>Recipients</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {queue.map(item => (
-                                <tr key={item.id}>
-                                    <td><code>{item.id}</code></td>
-                                    <td>{item.size} B</td>
-                                    <td>{item.date}</td>
-                                    <td>{item.sender}</td>
-                                    <td>{(item.recipients || []).join(', ')}</td>
-                                    <td>
-                                        <button
-                                            className="btn btn-sm btn-danger"
-                                            onClick={() => handleDelete(item.id)}
-                                        >
-                                            Delete
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+            {data?.installed && (
+                <div className="email-service-actions">
+                    <button className="btn btn-sm" onClick={() => handleServiceControl(component, 'restart')} disabled={actionLoading}>Restart</button>
+                    {data?.running
+                        ? <button className="btn btn-sm" onClick={() => handleServiceControl(component, 'stop')} disabled={actionLoading}>Stop</button>
+                        : <button className="btn btn-sm btn-primary" onClick={() => handleServiceControl(component, 'start')} disabled={actionLoading}>Start</button>
+                    }
                 </div>
             )}
         </div>
     );
-};
-
-
-// ==========================================
-// WEBMAIL TAB
-// ==========================================
-
-const WebmailTab = () => {
-    const { showToast } = useToast();
-    const [status, setStatus] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [installing, setInstalling] = useState(false);
-
-    useEffect(() => {
-        loadStatus();
-    }, []);
-
-    async function loadStatus() {
-        try {
-            const data = await api.getWebmailStatus();
-            setStatus(data);
-        } catch (err) {
-            console.error('Failed to load webmail status:', err);
-        } finally {
-            setLoading(false);
-        }
-    }
-
-    async function handleInstall() {
-        setInstalling(true);
-        try {
-            const result = await api.installWebmail();
-            if (result.success) {
-                showToast('Roundcube installed', 'success');
-                loadStatus();
-            } else {
-                showToast(result.error, 'error');
-            }
-        } catch (err) {
-            showToast(err.message, 'error');
-        } finally {
-            setInstalling(false);
-        }
-    }
-
-    if (loading) return <div className="loading">Loading...</div>;
 
     return (
-        <div className="email-webmail">
-            <div className="card">
-                <div className="card-body">
-                    {status?.installed ? (
-                        <div className="webmail-status">
-                            <div className="email-service-header">
-                                <div>
-                                    <h3>Roundcube Webmail</h3>
-                                    <p className="text-secondary">Browser-based email client for your users</p>
-                                </div>
-                                <span className="badge badge-success">Installed</span>
+        <div className="email-page">
+            <div className="page-header">
+                <div className="page-header-content">
+                    <h1>Email Server</h1>
+                    <p className="page-description">Manage Postfix, Dovecot, DKIM, SpamAssassin, and Roundcube</p>
+                </div>
+                <div className="page-header-actions">
+                    <button className="btn btn-sm" onClick={loadStatus}>Refresh</button>
+                </div>
+            </div>
+
+            {!isInstalled ? (
+                <div className="not-installed">
+                    <div className="icon">&#9993;</div>
+                    <h2>Email Server Not Installed</h2>
+                    <p>Install Postfix, Dovecot, OpenDKIM, and SpamAssassin to enable email hosting.</p>
+                    <div className="install-form">
+                        <div className="form-group" style={{ width: '100%' }}>
+                            <label>Hostname (e.g. mail.example.com)</label>
+                            <input type="text" value={installHostname} onChange={e => setInstallHostname(e.target.value)} placeholder="mail.example.com" />
+                        </div>
+                        <button className="btn btn-primary" onClick={handleInstall} disabled={actionLoading}>
+                            {actionLoading ? 'Installing...' : 'Install Email Server'}
+                        </button>
+                    </div>
+                </div>
+            ) : (
+                <>
+                    <div className="tab-navigation">
+                        {VALID_TABS.map(tab => (
+                            <button key={tab} className={`tab-button ${activeTab === tab ? 'active' : ''}`} onClick={() => setActiveTab(tab)}>
+                                {tab === 'dns-providers' ? 'DNS Providers' : tab.charAt(0).toUpperCase() + tab.slice(1)}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Status Tab */}
+                    {activeTab === 'status' && (
+                        <div className="email-status">
+                            <div className="status-grid">
+                                <ServiceCard name="Postfix (SMTP)" data={status?.postfix} component="postfix" />
+                                <ServiceCard name="Dovecot (IMAP)" data={status?.dovecot} component="dovecot" />
+                                <ServiceCard name="OpenDKIM" data={status?.dkim} component="opendkim" />
+                                <ServiceCard name="SpamAssassin" data={status?.spamassassin} component="spamassassin" />
+                                <ServiceCard name="Roundcube" data={status?.roundcube} component="roundcube" />
                             </div>
-                            {status.url && (
-                                <p style={{ marginTop: '16px' }}>
-                                    Access webmail at: <a href={status.url} target="_blank" rel="noopener noreferrer"><strong>{status.url}</strong></a>
-                                </p>
+                        </div>
+                    )}
+
+                    {/* Domains Tab */}
+                    {activeTab === 'domains' && (
+                        <div className="email-domains">
+                            <div className="section-header">
+                                <h2>Email Domains</h2>
+                                <button className="btn btn-primary btn-sm" onClick={() => setShowDomainForm(!showDomainForm)}>
+                                    {showDomainForm ? 'Cancel' : 'Add Domain'}
+                                </button>
+                            </div>
+                            {showDomainForm && (
+                                <form className="email-form" onSubmit={handleAddDomain}>
+                                    <div className="form-grid">
+                                        <div className="form-group">
+                                            <label>Domain Name</label>
+                                            <input type="text" value={newDomain.name} onChange={e => setNewDomain({ ...newDomain, name: e.target.value })} placeholder="example.com" required />
+                                        </div>
+                                    </div>
+                                    <div className="form-actions">
+                                        <button type="submit" className="btn btn-primary btn-sm" disabled={actionLoading}>Add Domain</button>
+                                    </div>
+                                </form>
+                            )}
+                            <div className="domain-list">
+                                {domains.length === 0 ? (
+                                    <div className="empty-state"><p>No domains configured</p></div>
+                                ) : domains.map(d => (
+                                    <div key={d.id} className="domain-card">
+                                        <div className="domain-header">
+                                            <h3>{d.name}</h3>
+                                            <span className={`status-badge ${d.is_active ? 'online' : 'offline'}`}>{d.is_active ? 'Active' : 'Inactive'}</span>
+                                        </div>
+                                        <div className="domain-stats">
+                                            <span>{d.accounts_count} accounts</span>
+                                            <span>{d.aliases_count} aliases</span>
+                                        </div>
+                                        <div className="domain-dns">
+                                            <span className={`dns-badge ${d.dkim_public_key ? 'verified' : 'missing'}`}>DKIM</span>
+                                            <span className={`dns-badge ${d.spf_record ? 'verified' : 'missing'}`}>SPF</span>
+                                            <span className={`dns-badge ${d.dmarc_record ? 'verified' : 'missing'}`}>DMARC</span>
+                                        </div>
+                                        <div className="domain-actions">
+                                            <button className="btn btn-sm" onClick={() => handleVerifyDNS(d.id)} disabled={actionLoading}>Verify DNS</button>
+                                            {d.dns_provider_id && <button className="btn btn-sm btn-primary" onClick={() => handleDeployDNS(d.id)} disabled={actionLoading}>Deploy DNS</button>}
+                                            <button className="btn btn-sm btn-danger" onClick={() => handleDeleteDomain(d.id, d.name)}>Delete</button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Accounts Tab */}
+                    {activeTab === 'accounts' && (
+                        <div className="email-accounts">
+                            <div className="domain-selector">
+                                <div className="form-group">
+                                    <label>Select Domain</label>
+                                    <select value={selectedDomainId} onChange={e => setSelectedDomainId(e.target.value)}>
+                                        <option value="">-- Select --</option>
+                                        {domains.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                                    </select>
+                                </div>
+                            </div>
+                            {selectedDomainId && (
+                                <>
+                                    <div className="section-header">
+                                        <h2>Accounts</h2>
+                                        <button className="btn btn-primary btn-sm" onClick={() => setShowAccountForm(!showAccountForm)}>
+                                            {showAccountForm ? 'Cancel' : 'Create Account'}
+                                        </button>
+                                    </div>
+                                    {showAccountForm && (
+                                        <form className="email-form" onSubmit={handleCreateAccount}>
+                                            <div className="form-grid">
+                                                <div className="form-group">
+                                                    <label>Username</label>
+                                                    <input type="text" value={newAccount.username} onChange={e => setNewAccount({ ...newAccount, username: e.target.value })} placeholder="user" required />
+                                                </div>
+                                                <div className="form-group">
+                                                    <label>Password</label>
+                                                    <input type="password" value={newAccount.password} onChange={e => setNewAccount({ ...newAccount, password: e.target.value })} required />
+                                                </div>
+                                                <div className="form-group">
+                                                    <label>Quota (MB)</label>
+                                                    <input type="number" value={newAccount.quota_mb} onChange={e => setNewAccount({ ...newAccount, quota_mb: parseInt(e.target.value) || 1024 })} />
+                                                </div>
+                                            </div>
+                                            <div className="form-actions">
+                                                <button type="submit" className="btn btn-primary btn-sm" disabled={actionLoading}>Create</button>
+                                            </div>
+                                        </form>
+                                    )}
+                                    <div className="accounts-list">
+                                        {accounts.length === 0 ? (
+                                            <div className="empty-state"><p>No accounts for this domain</p></div>
+                                        ) : accounts.map(a => (
+                                            <div key={a.id} className="account-card">
+                                                <div className="account-info">
+                                                    <div className="account-email">{a.email}</div>
+                                                    <div className="account-meta">
+                                                        <span>Quota: {a.quota_mb}MB</span>
+                                                        <span className={`status-badge ${a.is_active ? 'online' : 'offline'}`}>{a.is_active ? 'Active' : 'Disabled'}</span>
+                                                    </div>
+                                                </div>
+                                                <div className="account-actions">
+                                                    <button className="btn btn-sm" onClick={() => { setShowPasswordModal(a.id); setNewPassword(''); }}>Password</button>
+                                                    <button className="btn btn-sm btn-danger" onClick={() => handleDeleteAccount(a.id, a.email)}>Delete</button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </>
+                            )}
+                            {showPasswordModal && (
+                                <div className="modal-overlay" onClick={() => setShowPasswordModal(null)}>
+                                    <div className="modal-content" onClick={e => e.stopPropagation()}>
+                                        <h3>Change Password</h3>
+                                        <div className="form-group">
+                                            <label>New Password</label>
+                                            <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
+                                        </div>
+                                        <div className="form-actions">
+                                            <button className="btn btn-sm" onClick={() => setShowPasswordModal(null)}>Cancel</button>
+                                            <button className="btn btn-primary btn-sm" onClick={handleChangePassword} disabled={actionLoading || !newPassword}>Change</button>
+                                        </div>
+                                    </div>
+                                </div>
                             )}
                         </div>
-                    ) : (
-                        <div className="empty-state">
-                            <h3>Roundcube Webmail</h3>
-                            <p>Roundcube provides a browser-based interface for users to read and send email.</p>
-                            <button
-                                className="btn btn-primary"
-                                onClick={handleInstall}
-                                disabled={installing}
-                            >
-                                {installing ? 'Installing...' : 'Install Roundcube'}
-                            </button>
+                    )}
+
+                    {/* Aliases Tab */}
+                    {activeTab === 'aliases' && (
+                        <div className="email-aliases">
+                            <div className="domain-selector">
+                                <div className="form-group">
+                                    <label>Select Domain</label>
+                                    <select value={aliasDomainId} onChange={e => setAliasDomainId(e.target.value)}>
+                                        <option value="">-- Select --</option>
+                                        {domains.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                                    </select>
+                                </div>
+                            </div>
+                            {aliasDomainId && (
+                                <>
+                                    <div className="section-header">
+                                        <h2>Aliases</h2>
+                                        <button className="btn btn-primary btn-sm" onClick={() => setShowAliasForm(!showAliasForm)}>
+                                            {showAliasForm ? 'Cancel' : 'Create Alias'}
+                                        </button>
+                                    </div>
+                                    {showAliasForm && (
+                                        <form className="email-form" onSubmit={handleCreateAlias}>
+                                            <div className="form-grid">
+                                                <div className="form-group">
+                                                    <label>Source</label>
+                                                    <input type="text" value={newAlias.source} onChange={e => setNewAlias({ ...newAlias, source: e.target.value })} placeholder="info@example.com" required />
+                                                </div>
+                                                <div className="form-group">
+                                                    <label>Destination</label>
+                                                    <input type="text" value={newAlias.destination} onChange={e => setNewAlias({ ...newAlias, destination: e.target.value })} placeholder="user@example.com" required />
+                                                </div>
+                                            </div>
+                                            <div className="form-actions">
+                                                <button type="submit" className="btn btn-primary btn-sm" disabled={actionLoading}>Create</button>
+                                            </div>
+                                        </form>
+                                    )}
+                                    <div className="items-list">
+                                        {aliases.length === 0 ? (
+                                            <div className="empty-state"><p>No aliases for this domain</p></div>
+                                        ) : aliases.map(a => (
+                                            <div key={a.id} className="alias-card">
+                                                <div className="item-info">
+                                                    <div className="item-mapping">{a.source} <span className="arrow">&rarr;</span> {a.destination}</div>
+                                                </div>
+                                                <div className="item-actions">
+                                                    <button className="btn btn-sm btn-danger" onClick={() => handleDeleteAlias(a.id)}>Delete</button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </>
+                            )}
                         </div>
                     )}
-                </div>
-            </div>
-        </div>
-    );
-};
 
-
-// ==========================================
-// LOGS TAB
-// ==========================================
-
-const LogsTab = () => {
-    const [logs, setLogs] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [source, setSource] = useState(null);
-
-    useEffect(() => {
-        loadLogs();
-    }, []);
-
-    async function loadLogs() {
-        setLoading(true);
-        try {
-            const data = await api.getMailLogs(200);
-            setLogs(data.lines || []);
-            setSource(data.source);
-        } catch (err) {
-            console.error('Failed to load mail logs:', err);
-        } finally {
-            setLoading(false);
-        }
-    }
-
-    if (loading) return <div className="loading">Loading logs...</div>;
-
-    return (
-        <div className="email-logs">
-            <div className="section-header">
-                <h2>Mail Logs</h2>
-                <div className="btn-group">
-                    {source && <span className="text-secondary">Source: {source}</span>}
-                    <button className="btn btn-outline" onClick={loadLogs}>Refresh</button>
-                </div>
-            </div>
-
-            <div className="card">
-                <div className="card-body">
-                    {logs.length === 0 ? (
-                        <p className="text-secondary">No mail logs available.</p>
-                    ) : (
-                        <pre className="log-output">{logs.join('\n')}</pre>
+                    {/* Forwarding Tab */}
+                    {activeTab === 'forwarding' && (
+                        <div className="email-forwarding">
+                            <div className="domain-selector">
+                                <div className="form-group">
+                                    <label>Select Account</label>
+                                    <select value={selectedAccountId} onChange={e => setSelectedAccountId(e.target.value)}>
+                                        <option value="">-- Select --</option>
+                                        {allAccounts.map(a => <option key={a.id} value={a.id}>{a.email}</option>)}
+                                    </select>
+                                </div>
+                            </div>
+                            {selectedAccountId && (
+                                <>
+                                    <div className="section-header">
+                                        <h2>Forwarding Rules</h2>
+                                        <button className="btn btn-primary btn-sm" onClick={() => setShowForwardForm(!showForwardForm)}>
+                                            {showForwardForm ? 'Cancel' : 'Add Rule'}
+                                        </button>
+                                    </div>
+                                    {showForwardForm && (
+                                        <form className="email-form" onSubmit={handleCreateForwarding}>
+                                            <div className="form-grid">
+                                                <div className="form-group">
+                                                    <label>Forward To</label>
+                                                    <input type="email" value={newForward.destination} onChange={e => setNewForward({ ...newForward, destination: e.target.value })} required />
+                                                </div>
+                                                <div className="form-group">
+                                                    <label>
+                                                        <input type="checkbox" checked={newForward.keep_copy} onChange={e => setNewForward({ ...newForward, keep_copy: e.target.checked })} />
+                                                        {' '}Keep a copy in mailbox
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            <div className="form-actions">
+                                                <button type="submit" className="btn btn-primary btn-sm" disabled={actionLoading}>Add</button>
+                                            </div>
+                                        </form>
+                                    )}
+                                    <div className="items-list">
+                                        {forwardingRules.length === 0 ? (
+                                            <div className="empty-state"><p>No forwarding rules</p></div>
+                                        ) : forwardingRules.map(r => (
+                                            <div key={r.id} className="forwarding-card">
+                                                <div className="item-info">
+                                                    <div className="item-mapping">{r.account_email} <span className="arrow">&rarr;</span> {r.destination}</div>
+                                                    <div className="item-meta">{r.keep_copy ? 'Keeps copy' : 'No copy'} &middot; {r.is_active ? 'Active' : 'Inactive'}</div>
+                                                </div>
+                                                <div className="item-actions">
+                                                    <button className="btn btn-sm btn-danger" onClick={() => handleDeleteForwarding(r.id)}>Delete</button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </>
+                            )}
+                        </div>
                     )}
-                </div>
-            </div>
+
+                    {/* DNS Providers Tab */}
+                    {activeTab === 'dns-providers' && (
+                        <div className="email-dns-providers">
+                            <div className="section-header">
+                                <h2>DNS Providers</h2>
+                                <button className="btn btn-primary btn-sm" onClick={() => setShowProviderForm(!showProviderForm)}>
+                                    {showProviderForm ? 'Cancel' : 'Add Provider'}
+                                </button>
+                            </div>
+                            {showProviderForm && (
+                                <form className="email-form" onSubmit={handleAddProvider}>
+                                    <div className="form-grid">
+                                        <div className="form-group"><label>Name</label><input type="text" value={newProvider.name} onChange={e => setNewProvider({ ...newProvider, name: e.target.value })} required /></div>
+                                        <div className="form-group">
+                                            <label>Provider</label>
+                                            <select value={newProvider.provider} onChange={e => setNewProvider({ ...newProvider, provider: e.target.value })}>
+                                                <option value="cloudflare">Cloudflare</option>
+                                                <option value="route53">Route53</option>
+                                            </select>
+                                        </div>
+                                        <div className="form-group"><label>API Key</label><input type="password" value={newProvider.api_key} onChange={e => setNewProvider({ ...newProvider, api_key: e.target.value })} required /></div>
+                                        <div className="form-group"><label>API Secret (Route53)</label><input type="password" value={newProvider.api_secret} onChange={e => setNewProvider({ ...newProvider, api_secret: e.target.value })} /></div>
+                                        <div className="form-group"><label>API Email (Cloudflare)</label><input type="email" value={newProvider.api_email} onChange={e => setNewProvider({ ...newProvider, api_email: e.target.value })} /></div>
+                                    </div>
+                                    <div className="form-actions"><button type="submit" className="btn btn-primary btn-sm" disabled={actionLoading}>Add</button></div>
+                                </form>
+                            )}
+                            <div className="provider-list">
+                                {providers.length === 0 ? (
+                                    <div className="empty-state"><p>No DNS providers configured</p></div>
+                                ) : providers.map(p => (
+                                    <div key={p.id} className="provider-card">
+                                        <div className="provider-header">
+                                            <h3>{p.name}</h3>
+                                            <span className="provider-type">{p.provider}</span>
+                                        </div>
+                                        <div className="provider-meta">
+                                            <div className="meta-row"><span>API Key: {p.api_key}</span>{p.is_default && <span><strong>Default</strong></span>}</div>
+                                        </div>
+                                        <div className="provider-actions">
+                                            <button className="btn btn-sm" onClick={() => handleTestProvider(p.id)} disabled={actionLoading}>Test</button>
+                                            <button className="btn btn-sm" onClick={() => handleListZones(p.id)}>Zones</button>
+                                            <button className="btn btn-sm btn-danger" onClick={() => handleDeleteProvider(p.id)}>Delete</button>
+                                        </div>
+                                        {providerZones[p.id] && (
+                                            <div className="zones-list">
+                                                {providerZones[p.id].map(z => (
+                                                    <div key={z.id} className="zone-item"><span>{z.name}</span><span>{z.id}</span></div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Spam Tab */}
+                    {activeTab === 'spam' && spamConfig && (
+                        <div className="email-spam">
+                            <div className="section-header">
+                                <h2>SpamAssassin Configuration</h2>
+                                <div className="section-actions">
+                                    <button className="btn btn-sm" onClick={handleUpdateSpamRules} disabled={actionLoading}>Update Rules</button>
+                                    <button className="btn btn-primary btn-sm" onClick={handleUpdateSpam} disabled={actionLoading}>Save</button>
+                                </div>
+                            </div>
+                            <div className="spam-config">
+                                <div className="form-grid">
+                                    <div className="form-group">
+                                        <label>Required Score</label>
+                                        <input type="number" step="0.1" value={spamConfig.required_score} onChange={e => setSpamConfig({ ...spamConfig, required_score: parseFloat(e.target.value) })} />
+                                    </div>
+                                    <div className="form-group">
+                                        <label>Rewrite Subject</label>
+                                        <input type="text" value={spamConfig.rewrite_subject} onChange={e => setSpamConfig({ ...spamConfig, rewrite_subject: e.target.value })} />
+                                    </div>
+                                    <div className="form-group checkbox-field">
+                                        <input type="checkbox" checked={!!spamConfig.use_bayes} onChange={e => setSpamConfig({ ...spamConfig, use_bayes: e.target.checked ? 1 : 0 })} />
+                                        <label>Enable Bayesian Filter</label>
+                                    </div>
+                                    <div className="form-group checkbox-field">
+                                        <input type="checkbox" checked={!!spamConfig.bayes_auto_learn} onChange={e => setSpamConfig({ ...spamConfig, bayes_auto_learn: e.target.checked ? 1 : 0 })} />
+                                        <label>Auto-learn</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Webmail Tab */}
+                    {activeTab === 'webmail' && (
+                        <div className="email-webmail">
+                            <div className="section-header"><h2>Roundcube Webmail</h2></div>
+                            <div className="webmail-card">
+                                <div className="webmail-status-row">
+                                    <span className={`status-badge ${webmailStatus?.running ? 'online' : 'offline'}`}>
+                                        {webmailStatus?.running ? 'Running' : webmailStatus?.installed ? 'Stopped' : 'Not Installed'}
+                                    </span>
+                                    {webmailStatus?.port && <span>Port: {webmailStatus.port}</span>}
+                                </div>
+                                <div className="webmail-actions">
+                                    {!webmailStatus?.installed ? (
+                                        <button className="btn btn-primary btn-sm" onClick={handleWebmailInstall} disabled={actionLoading}>Install Roundcube</button>
+                                    ) : (
+                                        <>
+                                            {webmailStatus?.running
+                                                ? <button className="btn btn-sm" onClick={() => handleWebmailControl('stop')} disabled={actionLoading}>Stop</button>
+                                                : <button className="btn btn-sm btn-primary" onClick={() => handleWebmailControl('start')} disabled={actionLoading}>Start</button>
+                                            }
+                                            <button className="btn btn-sm" onClick={() => handleWebmailControl('restart')} disabled={actionLoading}>Restart</button>
+                                        </>
+                                    )}
+                                </div>
+                                {webmailStatus?.installed && (
+                                    <div className="proxy-form">
+                                        <div className="form-group">
+                                            <label>Proxy Domain</label>
+                                            <input type="text" value={proxyDomain} onChange={e => setProxyDomain(e.target.value)} placeholder="webmail.example.com" />
+                                        </div>
+                                        <button className="btn btn-sm btn-primary" onClick={handleConfigureProxy} disabled={actionLoading || !proxyDomain}>Configure Nginx Proxy</button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Queue & Logs Tab */}
+                    {activeTab === 'queue' && (
+                        <div>
+                            <div className="email-queue">
+                                <div className="section-header">
+                                    <h2>Mail Queue ({queue.length})</h2>
+                                    <button className="btn btn-sm" onClick={handleFlushQueue} disabled={actionLoading}>Flush Queue</button>
+                                </div>
+                                <div className="queue-list">
+                                    {queue.length === 0 ? (
+                                        <div className="empty-state"><p>Queue is empty</p></div>
+                                    ) : queue.map(item => (
+                                        <div key={item.queue_id} className="queue-item">
+                                            <div className="queue-info">
+                                                <div className="queue-id">{item.queue_id}</div>
+                                                <div className="queue-meta">
+                                                    <span>From: {item.sender}</span>
+                                                    <span>Size: {item.size}B</span>
+                                                    <span>{item.arrival_time}</span>
+                                                </div>
+                                                {item.error && <div className="queue-error">{item.error}</div>}
+                                            </div>
+                                            <button className="btn btn-sm btn-danger" onClick={() => handleDeleteQueueItem(item.queue_id)}>Delete</button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                            <div className="email-logs" style={{ marginTop: '2rem' }}>
+                                <div className="section-header">
+                                    <h2>Mail Logs</h2>
+                                    <div className="log-controls">
+                                        <select value={logLines} onChange={e => setLogLines(parseInt(e.target.value))}>
+                                            <option value={50}>50 lines</option>
+                                            <option value={100}>100 lines</option>
+                                            <option value={500}>500 lines</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <pre className="log-output">{logs.length > 0 ? logs.join('\n') : 'No logs available'}</pre>
+                            </div>
+                        </div>
+                    )}
+                </>
+            )}
+
+            {confirmDialog && <ConfirmDialog {...confirmDialog} />}
         </div>
     );
-};
+}
 
 export default Email;

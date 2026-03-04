@@ -1,12 +1,14 @@
 """Admin API endpoints for user management, settings, and audit logs."""
-from datetime import datetime
+from datetime import datetime, timedelta
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import get_jwt_identity
+from sqlalchemy import func
 from app import db
 from app.models import User, AuditLog
 from app.middleware.rbac import admin_required, get_current_user
 from app.services.audit_service import AuditService
 from app.services.settings_service import SettingsService
+from app.services.permission_service import PermissionService
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -142,6 +144,15 @@ def update_user(user_id):
             return jsonify({'error': 'Password must be at least 8 characters'}), 400
         user.set_password(data['password'])
         changes['password'] = 'changed'
+
+    # Update custom permissions (inline with user update)
+    if 'permissions' in data and user.role != User.ROLE_ADMIN:
+        from app.services.permission_service import PermissionService
+        perm_error = PermissionService.validate_permissions(data['permissions'])
+        if perm_error:
+            return jsonify({'error': perm_error}), 400
+        user.set_permissions(data['permissions'])
+        changes['permissions'] = 'updated'
 
     # Update active status
     if 'is_active' in data and data['is_active'] != user.is_active:
@@ -378,4 +389,198 @@ def get_admin_stats():
             }
         },
         'recent_logins': [log.to_dict() for log in recent_logins]
+    }), 200
+
+
+# ============================================
+# Permission Endpoints
+# ============================================
+
+@admin_bp.route('/users/<int:user_id>/permissions', methods=['GET'])
+@admin_required
+def get_user_permissions(user_id):
+    """Get a user's resolved permissions."""
+    perms = PermissionService.get_user_permissions(user_id)
+    if perms is None:
+        return jsonify({'error': 'User not found'}), 404
+    return jsonify({'permissions': perms}), 200
+
+
+@admin_bp.route('/users/<int:user_id>/permissions', methods=['PUT'])
+@admin_required
+def update_user_permissions(user_id):
+    """Update a user's custom permissions."""
+    data = request.get_json()
+    current_user_id = get_jwt_identity()
+
+    if not data or 'permissions' not in data:
+        return jsonify({'error': 'No permissions provided'}), 400
+
+    result = PermissionService.update_user_permissions(user_id, data['permissions'])
+    if not result['success']:
+        return jsonify({'error': result['error']}), 400
+
+    AuditService.log_user_action(
+        action=AuditLog.ACTION_USER_PERMISSIONS_UPDATE,
+        user_id=current_user_id,
+        target_user_id=user_id,
+        details={'permissions': data['permissions']}
+    )
+    db.session.commit()
+
+    return jsonify({
+        'message': 'Permissions updated',
+        'permissions': result['permissions']
+    }), 200
+
+
+@admin_bp.route('/users/<int:user_id>/permissions/reset', methods=['POST'])
+@admin_required
+def reset_user_permissions(user_id):
+    """Reset user permissions to role defaults."""
+    current_user_id = get_jwt_identity()
+
+    result = PermissionService.reset_to_role_defaults(user_id)
+    if not result['success']:
+        return jsonify({'error': result['error']}), 400
+
+    AuditService.log_user_action(
+        action=AuditLog.ACTION_USER_PERMISSIONS_RESET,
+        user_id=current_user_id,
+        target_user_id=user_id,
+    )
+    db.session.commit()
+
+    return jsonify({
+        'message': 'Permissions reset to role defaults',
+        'permissions': result['permissions']
+    }), 200
+
+
+@admin_bp.route('/permissions/templates', methods=['GET'])
+@admin_required
+def get_permission_templates():
+    """Get role template definitions and feature list."""
+    return jsonify({
+        'features': User.PERMISSION_FEATURES,
+        'templates': User.ROLE_PERMISSION_TEMPLATES,
+    }), 200
+
+
+# ============================================
+# Activity Dashboard Endpoints
+# ============================================
+
+@admin_bp.route('/activity/summary', methods=['GET'])
+@admin_required
+def get_activity_summary():
+    """Get activity summary: active users today, actions this week, top users."""
+    now = datetime.utcnow()
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    week_start = today_start - timedelta(days=7)
+
+    # Active users today (distinct users with audit log entries)
+    active_today = db.session.query(
+        func.count(func.distinct(AuditLog.user_id))
+    ).filter(
+        AuditLog.created_at >= today_start,
+        AuditLog.user_id.isnot(None)
+    ).scalar() or 0
+
+    # Actions this week
+    actions_this_week = db.session.query(
+        func.count(AuditLog.id)
+    ).filter(
+        AuditLog.created_at >= week_start
+    ).scalar() or 0
+
+    # Total users
+    total_users = User.query.filter_by(is_active=True).count()
+
+    # Top 5 most active users this week
+    top_users_query = db.session.query(
+        AuditLog.user_id,
+        func.count(AuditLog.id).label('action_count')
+    ).filter(
+        AuditLog.created_at >= week_start,
+        AuditLog.user_id.isnot(None)
+    ).group_by(AuditLog.user_id).order_by(
+        func.count(AuditLog.id).desc()
+    ).limit(5).all()
+
+    top_users = []
+    for user_id, count in top_users_query:
+        user = User.query.get(user_id)
+        if user:
+            top_users.append({
+                'user_id': user_id,
+                'username': user.username,
+                'action_count': count
+            })
+
+    # Daily action counts for the past 7 days
+    daily_counts = []
+    for i in range(7):
+        day_start = today_start - timedelta(days=6 - i)
+        day_end = day_start + timedelta(days=1)
+        count = db.session.query(func.count(AuditLog.id)).filter(
+            AuditLog.created_at >= day_start,
+            AuditLog.created_at < day_end
+        ).scalar() or 0
+        daily_counts.append({
+            'date': day_start.strftime('%Y-%m-%d'),
+            'count': count
+        })
+
+    return jsonify({
+        'active_users_today': active_today,
+        'actions_this_week': actions_this_week,
+        'total_users': total_users,
+        'top_users': top_users,
+        'daily_counts': daily_counts,
+    }), 200
+
+
+@admin_bp.route('/activity/feed', methods=['GET'])
+@admin_required
+def get_activity_feed():
+    """Get paginated activity feed with filters."""
+    page = request.args.get('page', 1, type=int)
+    per_page = min(request.args.get('per_page', 50, type=int), 100)
+    user_id = request.args.get('user_id', type=int)
+    action = request.args.get('action')
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+
+    kwargs = {
+        'page': page,
+        'per_page': per_page,
+        'user_id': user_id,
+        'action': action,
+    }
+
+    if start_date:
+        try:
+            kwargs['start_date'] = datetime.fromisoformat(start_date)
+        except ValueError:
+            pass
+
+    if end_date:
+        try:
+            kwargs['end_date'] = datetime.fromisoformat(end_date)
+        except ValueError:
+            pass
+
+    pagination = AuditService.get_logs(**kwargs)
+
+    return jsonify({
+        'logs': [log.to_dict() for log in pagination.items],
+        'pagination': {
+            'page': pagination.page,
+            'per_page': pagination.per_page,
+            'total': pagination.total,
+            'pages': pagination.pages,
+            'has_next': pagination.has_next,
+            'has_prev': pagination.has_prev
+        }
     }), 200

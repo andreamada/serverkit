@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import api from '../services/api';
 import ServerKitLogo from '../components/ServerKitLogo';
 
 const Register = () => {
@@ -10,8 +11,83 @@ const Register = () => {
     const [confirmPassword, setConfirmPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-    const { register } = useAuth();
+    const [inviteInfo, setInviteInfo] = useState(null);
+    const [inviteLoading, setInviteLoading] = useState(false);
+    const [inviteInvalid, setInviteInvalid] = useState(false);
+    const { register, registrationEnabled } = useAuth();
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const inviteToken = searchParams.get('invite');
+
+    useEffect(() => {
+        if (inviteToken) {
+            setInviteLoading(true);
+            api.validateInvitation(inviteToken)
+                .then(data => {
+                    setInviteInfo(data);
+                    if (data.email) setEmail(data.email);
+                })
+                .catch(() => {
+                    setInviteInvalid(true);
+                })
+                .finally(() => setInviteLoading(false));
+        }
+    }, [inviteToken]);
+
+    // If no invite token and registration disabled, show message
+    if (!inviteToken && !registrationEnabled) {
+        return (
+            <div className="auth-container">
+                <div className="auth-card">
+                    <div className="auth-header">
+                        <div className="brand-logo">
+                            <ServerKitLogo width={40} height={40} />
+                        </div>
+                        <h1>ServerKit</h1>
+                        <p>Registration is currently disabled</p>
+                    </div>
+                    <p className="auth-footer">
+                        Already have an account? <Link to="/login">Sign in</Link>
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
+    if (inviteLoading) {
+        return (
+            <div className="auth-container">
+                <div className="auth-card">
+                    <div className="auth-header">
+                        <div className="brand-logo">
+                            <ServerKitLogo width={40} height={40} />
+                        </div>
+                        <h1>ServerKit</h1>
+                        <p>Validating invitation...</p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (inviteInvalid) {
+        return (
+            <div className="auth-container">
+                <div className="auth-card">
+                    <div className="auth-header">
+                        <div className="brand-logo">
+                            <ServerKitLogo width={40} height={40} />
+                        </div>
+                        <h1>ServerKit</h1>
+                        <p>This invitation is invalid or has expired</p>
+                    </div>
+                    <p className="auth-footer">
+                        Already have an account? <Link to="/login">Sign in</Link>
+                    </p>
+                </div>
+            </div>
+        );
+    }
 
     async function handleSubmit(e) {
         e.preventDefault();
@@ -30,7 +106,7 @@ const Register = () => {
         setLoading(true);
 
         try {
-            await register(email, username, password);
+            await register(email, username, password, inviteToken || undefined);
             navigate('/');
         } catch (err) {
             setError(err.message || 'Failed to register');
@@ -47,7 +123,7 @@ const Register = () => {
                         <ServerKitLogo width={40} height={40} />
                     </div>
                     <h1>ServerKit</h1>
-                    <p>Create your account</p>
+                    <p>{inviteInfo ? `You've been invited as ${inviteInfo.role}` : 'Create your account'}</p>
                 </div>
 
                 {error && <div className="error-message">{error}</div>}
@@ -62,6 +138,7 @@ const Register = () => {
                             onChange={(e) => setEmail(e.target.value)}
                             placeholder="you@example.com"
                             required
+                            readOnly={!!inviteInfo?.email}
                         />
                     </div>
 

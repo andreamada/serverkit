@@ -6,6 +6,7 @@ import useDashboardLayout from '../hooks/useDashboardLayout';
 import api from '../services/api';
 import UsersTab from '../components/settings/UsersTab';
 import AuditLogTab from '../components/settings/AuditLogTab';
+import ActivityTab from '../components/settings/ActivityTab';
 import SSOConfigTab from '../components/settings/SSOConfigTab';
 import MigrationHistoryTab from '../components/settings/MigrationHistoryTab';
 import ApiSettingsTab from '../components/settings/ApiSettingsTab';
@@ -24,7 +25,7 @@ import {
 } from 'lucide-react';
 import ServerKitLogo from '../components/ServerKitLogo';
 
-const VALID_TABS = ['profile', 'security', 'appearance', 'notifications', 'system', 'users', 'audit', 'site', 'sso', 'api', 'migrations', 'developer', 'about'];
+const VALID_TABS = ['profile', 'security', 'appearance', 'notifications', 'system', 'users', 'audit', 'activity', 'site', 'sso', 'api', 'migrations', 'developer', 'about'];
 
 const Settings = () => {
     const [activeTab, setActiveTab] = useTabParam('/settings', VALID_TABS);
@@ -137,6 +138,13 @@ const Settings = () => {
                                 Audit Log
                             </button>
                             <button
+                                className={`settings-nav-item ${activeTab === 'activity' ? 'active' : ''}`}
+                                onClick={() => setActiveTab('activity')}
+                            >
+                                <Activity size={18} />
+                                Activity
+                            </button>
+                            <button
                                 className={`settings-nav-item ${activeTab === 'site' ? 'active' : ''}`}
                                 onClick={() => setActiveTab('site')}
                             >
@@ -206,6 +214,7 @@ const Settings = () => {
                     {activeTab === 'system' && <SystemInfo />}
                     {activeTab === 'users' && isAdmin && <UsersTab />}
                     {activeTab === 'audit' && isAdmin && <AuditLogTab />}
+                    {activeTab === 'activity' && isAdmin && <ActivityTab />}
                     {activeTab === 'site' && isAdmin && <SiteSettings onDevModeChange={setDevMode} />}
                     {activeTab === 'sso' && isAdmin && <SSOConfigTab />}
                     {activeTab === 'api' && isAdmin && <ApiSettingsTab />}
