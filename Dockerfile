@@ -62,8 +62,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN groupadd -r serverkit && useradd -r -g serverkit serverkit
 
 # Create necessary directories
-RUN mkdir -p /etc/serverkit /var/log/serverkit /var/quarantine /var/backups/serverkit \
-    && chown -R serverkit:serverkit /etc/serverkit /var/log/serverkit /var/quarantine /var/backups/serverkit
+RUN mkdir -p /etc/serverkit /var/serverkit/apps /var/log/serverkit /var/quarantine /var/backups/serverkit \
+    && chown -R serverkit:serverkit /etc/serverkit /var/serverkit /var/log/serverkit /var/quarantine /var/backups/serverkit
 
 # Set working directory
 WORKDIR /app

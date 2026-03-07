@@ -1,0 +1,130 @@
+import React, { useState, useEffect, useRef } from 'react';
+import api from '../../services/api';
+
+const ShellTab = ({ appId, appName }) => {
+    const [containers, setContainers] = useState([]);
+    const [selectedContainer, setSelectedContainer] = useState(null);
+    const [history, setHistory] = useState([]);
+    const [command, setCommand] = useState('');
+    const [running, setRunning] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const terminalRef = useRef(null);
+
+    useEffect(() => {
+        loadContainers();
+    }, [appId]);
+
+    useEffect(() => {
+        if (terminalRef.current) {
+            terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
+        }
+    }, [history]);
+
+    async function loadContainers() {
+        try {
+            const data = await api.getContainers(true);
+            const appContainers = (data.containers || []).filter(c =>
+                c.Names?.some(n => n.includes(appName)) ||
+                c.Labels?.['com.docker.compose.project'] === appName
+            );
+            setContainers(appContainers);
+            if (appContainers.length > 0 && !selectedContainer) {
+                setSelectedContainer(appContainers[0].Id);
+            }
+        } catch (err) {
+            console.error('Failed to load containers:', err);
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    async function handleExec(e) {
+        e.preventDefault();
+        if (!command.trim() || !selectedContainer) return;
+
+        const cmd = command.trim();
+        setCommand('');
+        setRunning(true);
+        setHistory(prev => [...prev, { type: 'input', text: cmd }]);
+
+        try {
+            const result = await api.execContainer(selectedContainer, cmd);
+            if (result.output) {
+                setHistory(prev => [...prev, { type: 'output', text: result.output }]);
+            }
+            if (result.error) {
+                setHistory(prev => [...prev, { type: 'error', text: result.error }]);
+            }
+        } catch (err) {
+            setHistory(prev => [...prev, { type: 'error', text: err.message || 'Command failed' }]);
+        } finally {
+            setRunning(false);
+        }
+    }
+
+    if (loading) {
+        return <div className="loading">Loading containers...</div>;
+    }
+
+    if (containers.length === 0) {
+        return (
+            <div className="events-tab__empty">
+                <h3>No running containers</h3>
+                <p>Start the service to access the shell.</p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="shell-tab">
+            <div className="shell-tab__container">
+                <div className="shell-tab__header">
+                    <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Container Shell</span>
+                    {containers.length > 1 && (
+                        <select
+                            value={selectedContainer || ''}
+                            onChange={(e) => setSelectedContainer(e.target.value)}
+                            style={{ fontSize: '12px' }}
+                        >
+                            {containers.map(c => (
+                                <option key={c.Id} value={c.Id}>
+                                    {c.Names?.[0]?.replace(/^\//, '') || c.Id.substring(0, 12)}
+                                </option>
+                            ))}
+                        </select>
+                    )}
+                </div>
+
+                <div className="shell-tab__terminal" ref={terminalRef}>
+                    {history.length === 0 && (
+                        <div style={{ color: '#8b949e' }}>
+                            Type a command below to execute it in the container.
+                        </div>
+                    )}
+                    {history.map((line, i) => (
+                        <div key={i} className={`shell-tab__line shell-tab__line--${line.type}`}>
+                            {line.type === 'input' && '$ '}
+                            {line.text}
+                        </div>
+                    ))}
+                    {running && <div style={{ color: '#8b949e' }}>Running...</div>}
+                </div>
+
+                <form className="shell-tab__input-row" onSubmit={handleExec}>
+                    <span className="shell-tab__prompt">$</span>
+                    <input
+                        className="shell-tab__input"
+                        type="text"
+                        value={command}
+                        onChange={(e) => setCommand(e.target.value)}
+                        placeholder="Enter command..."
+                        disabled={running}
+                        autoFocus
+                    />
+                </form>
+            </div>
+        </div>
+    );
+};
+
+export default ShellTab;

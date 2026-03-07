@@ -25,6 +25,8 @@ import FTPServer from './pages/FTPServer';
 import Git from './pages/Git';
 import CronJobs from './pages/CronJobs';
 import Security from './pages/Security';
+import Services from './pages/Services';
+import ServiceDetail from './pages/ServiceDetail';
 import Templates from './pages/Templates';
 import WorkflowBuilder from './pages/WorkflowBuilder';
 import Servers from './pages/Servers';
@@ -45,6 +47,7 @@ const PAGE_TITLES = {
     '/login': 'Login',
     '/register': 'Register',
     '/setup': 'Setup',
+    '/services': 'Services',
     '/apps': 'Applications',
     '/wordpress': 'WordPress Sites',
     '/wordpress/projects': 'WordPress Projects',
@@ -82,7 +85,8 @@ function PageTitleUpdater() {
             const basePath = '/' + path.split('/')[1];
             if (PAGE_TITLES[basePath]) {
                 title = PAGE_TITLES[basePath];
-            } else if (path.startsWith('/apps/')) title = 'Application Details';
+            } else if (path.startsWith('/services/')) title = 'Service Details';
+            else if (path.startsWith('/apps/')) title = 'Application Details';
             else if (path.startsWith('/servers/')) title = 'Server Details';
             else if (path.startsWith('/wordpress/projects/')) title = 'WordPress Pipeline';
             else if (path.startsWith('/wordpress/')) title = 'WordPress Site';
@@ -178,7 +182,9 @@ function AppRoutes() {
                 </PrivateRoute>
             }>
                 <Route index element={<Dashboard />} />
-                <Route path="apps" element={<Applications />} />
+                <Route path="services" element={<Services />} />
+                <Route path="services/:id" element={<ServiceDetail />} />
+                <Route path="apps" element={<Navigate to="/services" replace />} />
                 <Route path="apps/:id" element={<ApplicationDetail />} />
                 <Route path="apps/:id/:tab" element={<ApplicationDetail />} />
                 <Route path="wordpress" element={<WordPress />} />

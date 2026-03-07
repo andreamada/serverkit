@@ -30,7 +30,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get clean
 
 # Create directories for ServerKit
-RUN mkdir -p /etc/serverkit /app/logs /var/quarantine /app/instance /var/backups/serverkit
+RUN mkdir -p /etc/serverkit /var/serverkit/apps /app/logs /var/quarantine /app/instance /var/backups/serverkit
 
 # Copy requirements first for caching
 COPY requirements.txt .
