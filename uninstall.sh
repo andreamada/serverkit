@@ -28,25 +28,25 @@ NC='\033[0m'
 ########################################
 
 print_header() {
-echo -e "${BLUE}"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "  ServerKit Uninstaller"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo -e "${NC}"
+    echo -e "${BLUE}"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "  ServerKit Uninstaller"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo -e "${NC}"
 }
 
-print_success(){ echo -e "${GREEN}✓ $1${NC}"; }
-print_error(){ echo -e "${RED}✗ $1${NC}"; }
-print_warning(){ echo -e "${YELLOW}! $1${NC}"; }
-print_info(){ echo -e "${BLUE}→ $1${NC}"; }
+print_success() { echo -e "${GREEN}✓ $1${NC}"; }
+print_error() { echo -e "${RED}✗ $1${NC}"; }
+print_warning() { echo -e "${YELLOW}! $1${NC}"; }
+print_info() { echo -e "${BLUE}→ $1${NC}"; }
 
 ########################################
 # Root check
 ########################################
 
 if [[ $EUID -ne 0 ]]; then
-print_error "Please run as root (sudo)"
-exit 1
+    print_error "Please run as root (sudo)"
+    exit 1
 fi
 
 print_header
@@ -59,8 +59,8 @@ echo
 read -p "Remove ServerKit completely? (y/N): " confirm
 
 if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
-print_warning "Uninstall cancelled"
-exit 0
+    print_warning "Uninstall cancelled"
+    exit 0
 fi
 
 ########################################
@@ -80,7 +80,11 @@ print_success "Backend service stopped"
 
 print_info "Stopping Docker containers"
 
-docker compose -C "$INSTALL_DIR" down --remove-orphans 2>/dev/null || true
+if command -v docker &>/dev/null && [ -d "$INSTALL_DIR" ]; then
+    docker compose --project-directory "$INSTALL_DIR" down --remove-orphans 2>/dev/null || true
+else
+    print_warning "Docker or install directory not found, skipping container cleanup"
+fi
 
 print_success "Containers removed"
 
@@ -126,8 +130,10 @@ print_success "Installation directory removed"
 print_info "Removing data directory"
 
 rm -rf "$DATA_DIR"
+rm -rf /etc/serverkit
+rm -rf /var/serverkit
 
-print_success "Data directory removed"
+print_success "Data directories removed"
 
 ########################################
 # Remove logs
@@ -148,6 +154,12 @@ print_info "Removing CLI command"
 rm -f /usr/local/bin/serverkit
 
 print_success "CLI removed"
+
+########################################
+# Track uninstall
+########################################
+
+curl -s "https://serverkit.ai/track/uninstall" >/dev/null 2>&1 || true
 
 ########################################
 # Finish
