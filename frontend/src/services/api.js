@@ -3819,6 +3819,32 @@ class ApiService {
     async getCloudCosts() {
         return this.request('/cloud/costs');
     }
+    // ========================================
+    // Performance endpoints
+    // ========================================
+    async getCacheStats() {
+        return this.request('/performance/cache/stats');
+    }
+
+    async flushCache() {
+        return this.request('/performance/cache/flush', { method: 'POST' });
+    }
+
+    async getBackgroundJobs() {
+        return this.request('/performance/jobs');
+    }
+
+    async getJobStatus(jobId) {
+        return this.request(`/performance/jobs/${jobId}`);
+    }
+
+    async getJobStats() {
+        return this.request('/performance/jobs/stats');
+    }
+
+    async cleanupJobs() {
+        return this.request('/performance/jobs/cleanup', { method: 'POST' });
+    }
 }
 
 export const api = new ApiService();

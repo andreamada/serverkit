@@ -258,6 +258,10 @@ def create_app(config_name=None):
     from app.api.cloud_provisioning import cloud_provisioning_bp
     app.register_blueprint(cloud_provisioning_bp, url_prefix='/api/v1/cloud')
 
+    # Register blueprints - Performance
+    from app.api.performance import performance_bp
+    app.register_blueprint(performance_bp, url_prefix='/api/v1/performance')
+
     # Handle database migrations (Alembic)
     with app.app_context():
         from app.services.migration_service import MigrationService
