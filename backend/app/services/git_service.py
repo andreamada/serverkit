@@ -434,6 +434,17 @@ class GitService:
                 'message': f'Ignoring push to {ref}, configured branch is {branch}'
             }
 
+        # Emit event for workflow triggers
+        try:
+            from app.services.workflow_engine import WorkflowEventBus
+            WorkflowEventBus.emit('git_push', {
+                'app_id': app_id,
+                'branch': branch,
+                'ref': ref
+            })
+        except Exception:
+            pass
+
         # Trigger deployment
         return cls.deploy(app_id)
 

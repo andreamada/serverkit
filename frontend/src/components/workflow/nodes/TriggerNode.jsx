@@ -3,12 +3,12 @@ import { Handle, Position } from '@xyflow/react';
 import { Zap, Clock, Webhook, Activity, Play } from 'lucide-react';
 
 const TriggerNode = ({ data, selected }) => {
-    const { 
-        triggerType = 'manual', 
+    const {
+        triggerType = 'manual',
         label = 'Trigger',
         isActive = false,
-        lastRunAt = null,
-        lastStatus = null
+        lastStatus = null,
+        triggerConfig = {}
     } = data;
 
     const getIcon = () => {
@@ -28,6 +28,30 @@ const TriggerNode = ({ data, selected }) => {
         return 'border-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.3)]';
     };
 
+    const getSublabel = () => {
+        const typeName = triggerType.charAt(0).toUpperCase() + triggerType.slice(1);
+        const status = isActive ? 'Active' : 'Disabled';
+
+        if (triggerType === 'cron' && triggerConfig.cron) {
+            return `${triggerConfig.cron} \u2022 ${status}`;
+        }
+        if (triggerType === 'webhook' && triggerConfig.webhook_id) {
+            return `...${triggerConfig.webhook_id.slice(-8)} \u2022 ${status}`;
+        }
+        if (triggerType === 'event' && triggerConfig.eventType) {
+            const eventLabels = {
+                health_check_failed: 'Health Fail',
+                high_cpu: 'High CPU',
+                high_memory: 'High Memory',
+                git_push: 'Git Push',
+                app_stopped: 'App Stopped'
+            };
+            return `${eventLabels[triggerConfig.eventType] || triggerConfig.eventType} \u2022 ${status}`;
+        }
+
+        return `${typeName} \u2022 ${status}`;
+    };
+
     return (
         <div className={`workflow-node node-trigger ${selected ? 'node-selected' : ''} ${getStatusColor()}`}>
             <div className="node-icon bg-gray-800">
@@ -35,12 +59,9 @@ const TriggerNode = ({ data, selected }) => {
             </div>
             <div className="node-content">
                 <div className="node-label">{label}</div>
-                <div className="node-sublabel">
-                    {triggerType.charAt(0).toUpperCase() + triggerType.slice(1)}
-                    {isActive ? ' • Active' : ' • Disabled'}
-                </div>
+                <div className="node-sublabel">{getSublabel()}</div>
             </div>
-            
+
             <Handle
                 type="source"
                 position={Position.Bottom}

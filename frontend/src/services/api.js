@@ -2581,6 +2581,13 @@ class ApiService {
         return this.request(`/workflows/executions/${executionId}/logs`);
     }
 
+    async validateWorkflow(data) {
+        return this.request('/workflows/validate', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    }
+
     // ========================================
     // Servers (Multi-Server Management) endpoints
     // ========================================

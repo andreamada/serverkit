@@ -51,7 +51,7 @@ const NotificationConfigPanel = ({ node, onChange, onClose }) => {
                             onClick={() => onChange({ ...data, channel: 'system' })}
                         >
                             <Bell size={14} />
-                            <span className="text-xs">System</span>
+                            <span className="text-xs">All</span>
                         </button>
                     </div>
                 </div>
@@ -62,14 +62,17 @@ const NotificationConfigPanel = ({ node, onChange, onClose }) => {
                         className="text-xs bg-gray-900 border-gray-700 rounded p-2 h-48 focus:border-blue-500 focus:outline-none"
                         value={message}
                         onChange={(e) => onChange({ ...data, message: e.target.value })}
-                        placeholder="e.g. Workflow {{workflow_name}} failed on node {{failed_node_id}}"
+                        placeholder="e.g. Build finished for {{workflow_name}} — exit code: ${build_node.returncode}"
                     />
                 </div>
 
                 <div className="mt-4 p-3 bg-gray-800 rounded border border-gray-700">
                     <p className="text-[10px] text-gray-400">
-                        <strong>Available Placeholders:</strong><br />
-                        <code>{{workflow_name}}</code>, <code>{{execution_id}}</code>, <code>{{started_at}}</code>, <code>{{node_id.output}}</code>
+                        <strong>Variables:</strong><br />
+                        <code>{'{{workflow_name}}'}</code>, <code>{'{{execution_id}}'}</code>, <code>{'{{started_at}}'}</code><br />
+                        <code>{'${node_id.stdout}'}</code> — output from a specific node<br />
+                        <code>{'${node_id.returncode}'}</code> — exit code from a script node<br />
+                        <code>{'{{context.field}}'}</code> — value from trigger context
                     </p>
                 </div>
             </div>

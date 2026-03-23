@@ -1,9 +1,10 @@
-import React from 'react';
-import { X, Play, Clock, Webhook, Activity, Zap } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, Play, Clock, Webhook, Zap, Copy, Check } from 'lucide-react';
 
 const TriggerConfigPanel = ({ node, onChange, onClose }) => {
     const { data } = node;
     const { triggerType = 'manual', label = 'Trigger', triggerConfig = {} } = data;
+    const [copied, setCopied] = useState(false);
 
     const handleTypeChange = (type) => {
         onChange({
@@ -21,6 +22,18 @@ const TriggerConfigPanel = ({ node, onChange, onClose }) => {
                 [key]: value
             }
         });
+    };
+
+    const webhookUrl = triggerConfig.webhook_id
+        ? `${window.location.origin}/api/v1/workflows/hooks/${triggerConfig.webhook_id}`
+        : null;
+
+    const copyWebhookUrl = () => {
+        if (webhookUrl) {
+            navigator.clipboard.writeText(webhookUrl);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        }
     };
 
     return (
@@ -92,17 +105,38 @@ const TriggerConfigPanel = ({ node, onChange, onClose }) => {
                 {triggerType === 'webhook' && (
                     <div className="form-group animate-in fade-in slide-in-from-top-1">
                         <label>Webhook URL</label>
-                        <div className="flex gap-2">
-                            <input
-                                type="text"
-                                value={triggerConfig.webhookPath || `/hooks/${node.id}`}
-                                readOnly
-                                className="bg-gray-900 text-gray-400 cursor-not-allowed"
-                            />
+                        {webhookUrl ? (
+                            <>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        value={webhookUrl}
+                                        readOnly
+                                        className="bg-gray-900 text-gray-300 cursor-default font-mono text-xs flex-1"
+                                    />
+                                    <button
+                                        onClick={copyWebhookUrl}
+                                        className="px-3 py-1 rounded border border-gray-600 bg-gray-800 hover:bg-gray-700 transition-colors"
+                                        title="Copy URL"
+                                    >
+                                        {copied ? <Check size={14} className="text-green-400" /> : <Copy size={14} className="text-gray-400" />}
+                                    </button>
+                                </div>
+                                <p className="text-[10px] text-gray-500 mt-1">
+                                    Send POST requests to this URL to trigger the workflow.
+                                </p>
+                            </>
+                        ) : (
+                            <p className="text-[10px] text-yellow-400 mt-1">
+                                Save the workflow to generate the webhook URL.
+                            </p>
+                        )}
+                        <div className="mt-3 p-3 bg-gray-800 rounded border border-gray-700">
+                            <p className="text-[10px] text-gray-400">
+                                <strong>Request body</strong> is available in your workflow as <code>context.body</code>.
+                                Query parameters are in <code>context.query</code>.
+                            </p>
                         </div>
-                        <p className="text-[10px] text-gray-500 mt-1">
-                            Send POST requests to this endpoint to trigger the workflow.
-                        </p>
                     </div>
                 )}
 
@@ -114,11 +148,14 @@ const TriggerConfigPanel = ({ node, onChange, onClose }) => {
                             onChange={(e) => handleConfigChange('eventType', e.target.value)}
                         >
                             <option value="health_check_failed">Health Check Failed</option>
-                            <option value="high_cpu">High CPU Usage (>80%)</option>
-                            <option value="high_memory">High Memory Usage (>80%)</option>
+                            <option value="high_cpu">High CPU Usage (&gt;80%)</option>
+                            <option value="high_memory">High Memory Usage (&gt;80%)</option>
                             <option value="git_push">Git Push Received</option>
                             <option value="app_stopped">Application Stopped</option>
                         </select>
+                        <p className="text-[10px] text-gray-500 mt-1">
+                            Event data is available as <code>context.event_data</code>.
+                        </p>
                     </div>
                 )}
             </div>

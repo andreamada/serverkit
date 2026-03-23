@@ -280,6 +280,25 @@ class MonitoringService:
         # Send to all configured notification channels (Discord, Slack, Telegram, etc.)
         NotificationService.send_all(alerts_to_send)
 
+        # Emit events for workflow triggers
+        try:
+            from app.services.workflow_engine import WorkflowEventBus
+            for alert in alerts_to_send:
+                if alert['type'] == 'cpu':
+                    WorkflowEventBus.emit('high_cpu', {
+                        'percent': alert.get('value'),
+                        'threshold': alert.get('threshold'),
+                        'severity': alert.get('severity')
+                    })
+                elif alert['type'] == 'memory':
+                    WorkflowEventBus.emit('high_memory', {
+                        'percent': alert.get('value'),
+                        'threshold': alert.get('threshold'),
+                        'severity': alert.get('severity')
+                    })
+        except Exception:
+            pass
+
     @classmethod
     def log_alert(cls, alerts: List[Dict]) -> None:
         """Log alerts to file."""

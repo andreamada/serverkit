@@ -1,10 +1,24 @@
 import json
+import secrets
+from datetime import datetime
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app import db
 from app.models import Workflow, User, WorkflowExecution, WorkflowLog
 
 workflows_bp = Blueprint('workflows', __name__)
+
+
+def _validate_workflow_graph(data):
+    """Validate workflow graph for cycles if nodes/edges are present."""
+    nodes = data.get('nodes', [])
+    edges = data.get('edges', [])
+    if nodes and edges:
+        from app.services.workflow_engine import WorkflowEngine
+        err = WorkflowEngine.validate_graph(nodes, edges)
+        if err:
+            return err
+    return None
 
 
 @workflows_bp.route('', methods=['GET'])
@@ -55,6 +69,16 @@ def create_workflow():
     if not name:
         return jsonify({'error': 'Name is required'}), 400
 
+    # Validate graph for cycles
+    cycle_err = _validate_workflow_graph(data)
+    if cycle_err:
+        return jsonify({'error': cycle_err}), 400
+
+    # Auto-generate webhook_id if trigger is webhook
+    trigger_config = data.get('trigger_config', {})
+    if data.get('trigger_type') == 'webhook' and not trigger_config.get('webhook_id'):
+        trigger_config['webhook_id'] = secrets.token_urlsafe(24)
+
     workflow = Workflow(
         name=name,
         description=data.get('description', ''),
@@ -63,7 +87,7 @@ def create_workflow():
         viewport=json.dumps(data.get('viewport')) if data.get('viewport') else None,
         is_active=data.get('is_active', False),
         trigger_type=data.get('trigger_type', 'manual'),
-        trigger_config=json.dumps(data.get('trigger_config', {})),
+        trigger_config=json.dumps(trigger_config),
         user_id=current_user_id
     )
 
@@ -94,6 +118,11 @@ def update_workflow(workflow_id):
     if not data:
         return jsonify({'error': 'No data provided'}), 400
 
+    # Validate graph for cycles
+    cycle_err = _validate_workflow_graph(data)
+    if cycle_err:
+        return jsonify({'error': cycle_err}), 400
+
     if 'name' in data:
         workflow.name = data['name']
     if 'description' in data:
@@ -104,14 +133,19 @@ def update_workflow(workflow_id):
         workflow.edges = json.dumps(data['edges'])
     if 'viewport' in data:
         workflow.viewport = json.dumps(data['viewport']) if data['viewport'] else None
-    
+
     # Automation fields
     if 'is_active' in data:
         workflow.is_active = data['is_active']
     if 'trigger_type' in data:
         workflow.trigger_type = data['trigger_type']
     if 'trigger_config' in data:
-        workflow.trigger_config = json.dumps(data['trigger_config'])
+        trigger_config = data['trigger_config']
+        # Auto-generate webhook_id if switching to webhook trigger
+        if data.get('trigger_type') == 'webhook' and not trigger_config.get('webhook_id'):
+            existing = json.loads(workflow.trigger_config) if workflow.trigger_config else {}
+            trigger_config['webhook_id'] = existing.get('webhook_id') or secrets.token_urlsafe(24)
+        workflow.trigger_config = json.dumps(trigger_config)
 
     db.session.commit()
 
@@ -254,3 +288,86 @@ def deploy_workflow(workflow_id):
     else:
         # Partial success or errors - return 200 with error details
         return jsonify(result), 200
+
+
+@workflows_bp.route('/hooks/<webhook_id>', methods=['POST'])
+def webhook_trigger(webhook_id):
+    """
+    Public webhook endpoint to trigger a workflow.
+    No JWT required — the webhook_id acts as the authentication token.
+    """
+    from app.services.workflow_engine import WorkflowEngine, CycleDetectedError
+
+    # Find the workflow with this webhook_id
+    workflows = Workflow.query.filter_by(
+        is_active=True,
+        trigger_type='webhook'
+    ).all()
+
+    target_workflow = None
+    for wf in workflows:
+        try:
+            config = json.loads(wf.trigger_config) if wf.trigger_config else {}
+            if config.get('webhook_id') == webhook_id:
+                target_workflow = wf
+                break
+        except (json.JSONDecodeError, TypeError):
+            continue
+
+    if not target_workflow:
+        return jsonify({'error': 'Webhook not found'}), 404
+
+    # Build context from the incoming request
+    context = {
+        'webhook_id': webhook_id,
+        'method': request.method,
+        'headers': dict(request.headers),
+        'triggered_at': datetime.utcnow().isoformat()
+    }
+
+    # Include request body
+    if request.is_json:
+        context['body'] = request.get_json(silent=True) or {}
+    else:
+        body = request.get_data(as_text=True)
+        context['body'] = body[:8192] if body else ''
+
+    # Include query parameters
+    if request.args:
+        context['query'] = dict(request.args)
+
+    try:
+        execution_id = WorkflowEngine.execute_workflow(
+            workflow_id=target_workflow.id,
+            trigger_type='webhook',
+            context=context
+        )
+        return jsonify({
+            'message': 'Workflow triggered',
+            'execution_id': execution_id,
+            'workflow': target_workflow.name
+        }), 200
+    except CycleDetectedError as e:
+        return jsonify({'error': str(e)}), 400
+    except Exception as e:
+        return jsonify({'error': f'Execution failed: {str(e)}'}), 500
+
+
+@workflows_bp.route('/validate', methods=['POST'])
+@jwt_required()
+def validate_workflow():
+    """Validate a workflow graph for cycles and other issues."""
+    from app.services.workflow_engine import WorkflowEngine
+
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+
+    nodes = data.get('nodes', [])
+    edges = data.get('edges', [])
+
+    err = WorkflowEngine.validate_graph(nodes, edges)
+    if err:
+        return jsonify({'valid': False, 'error': err}), 200
+
+    return jsonify({'valid': True}), 200

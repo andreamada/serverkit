@@ -90,6 +90,18 @@ class EnvironmentHealthService:
         site.last_health_check = datetime.utcnow()
         db.session.commit()
 
+        # Emit event for workflow triggers on unhealthy status
+        if overall in ('unhealthy', 'degraded'):
+            try:
+                from app.services.workflow_engine import WorkflowEventBus
+                WorkflowEventBus.emit('health_check_failed', {
+                    'site_id': site_id,
+                    'overall_status': overall,
+                    'checks': checks
+                })
+            except Exception:
+                pass
+
         return {
             'success': True,
             'site_id': site_id,

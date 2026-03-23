@@ -3,7 +3,14 @@ import { X, Terminal, Code } from 'lucide-react';
 
 const ScriptConfigPanel = ({ node, onChange, onClose }) => {
     const { data } = node;
-    const { language = 'bash', label = 'Run Script', content = '' } = data;
+    const {
+        language = 'bash',
+        label = 'Run Script',
+        content = '',
+        timeout = 300,
+        retryCount = 0,
+        retryDelay = 5
+    } = data;
 
     return (
         <div className="config-panel">
@@ -52,9 +59,45 @@ const ScriptConfigPanel = ({ node, onChange, onClose }) => {
                     />
                 </div>
 
+                <div className="grid grid-cols-3 gap-2">
+                    <div className="form-group">
+                        <label>Timeout (s)</label>
+                        <input
+                            type="number"
+                            min="1"
+                            max="3600"
+                            value={timeout}
+                            onChange={(e) => onChange({ ...data, timeout: parseInt(e.target.value) || 300 })}
+                        />
+                    </div>
+                    <div className="form-group">
+                        <label>Retries</label>
+                        <input
+                            type="number"
+                            min="0"
+                            max="5"
+                            value={retryCount}
+                            onChange={(e) => onChange({ ...data, retryCount: parseInt(e.target.value) || 0 })}
+                        />
+                    </div>
+                    <div className="form-group">
+                        <label>Delay (s)</label>
+                        <input
+                            type="number"
+                            min="1"
+                            max="300"
+                            value={retryDelay}
+                            onChange={(e) => onChange({ ...data, retryDelay: parseInt(e.target.value) || 5 })}
+                        />
+                    </div>
+                </div>
+
                 <div className="mt-4 p-3 bg-blue-900/20 rounded border border-blue-500/30">
                     <p className="text-[10px] text-blue-300">
-                        <strong>Environment Variables:</strong> You can use <code>$NODE_ID_OUTPUT</code> to access results from previous nodes.
+                        <strong>Variables:</strong><br />
+                        <code className="text-blue-200">{'${node_id.stdout}'}</code> — output from a previous node<br />
+                        <code className="text-blue-200">$NODE_ID_OUTPUT</code> — same, as env var<br />
+                        <code className="text-blue-200">$WORKFLOW_ID</code>, <code className="text-blue-200">$EXECUTION_ID</code> — workflow metadata
                     </p>
                 </div>
             </div>

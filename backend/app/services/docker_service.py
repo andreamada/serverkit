@@ -217,6 +217,13 @@ class DockerService:
                 capture_output=True, text=True
             )
             if result.returncode == 0:
+                try:
+                    from app.services.workflow_engine import WorkflowEventBus
+                    WorkflowEventBus.emit('app_stopped', {
+                        'container_id': container_id
+                    })
+                except Exception:
+                    pass
                 return {'success': True}
             return {'success': False, 'error': result.stderr}
         except Exception as e:

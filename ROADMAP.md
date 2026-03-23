@@ -304,18 +304,19 @@ The phases below are ordered by priority. Higher phases ship first.
 
 ---
 
-## Phase 23: Advanced Workflow & Automation Engine (NEW)
+## Phase 23: Workflow & Automation Engine — Core (Completed)
 
 **Priority: Critical**
 
 Moving beyond static design to dynamic, event-driven automation. This turns ServerKit into a powerful automation hub.
 
-- [x] **Event Triggers:** Run workflows on Git push, health check failure, high CPU usage, or Webhook receipt.
-- [x] **Cron Integration:** Schedule workflows to run on recurring intervals (e.g., "Every Sunday at 2 AM, backup all DBs and rotate logs").
-- [x] **Cross-Server Actions:** "When Server A's database is backed up, sync it to Server B and notify Discord."
-- [x] **Logic Nodes:** If/Else conditions, loops, and custom Python/Shell script execution nodes.
-- [x] **State Machine:** Track workflow execution history, retries on failure, and execution logs.
-- [x] **Global Variables:** Pass data between workflow steps (e.g., take the output of a build step and pass it to a deployment step).
+- [x] **Visual Workflow Builder:** Node-based canvas with drag-and-drop nodes, connection validation, and config panels
+- [x] **Cron Integration:** Schedule workflows to run on recurring intervals (e.g., "Every Sunday at 2 AM, backup all DBs and rotate logs")
+- [x] **Manual Execution:** Trigger workflows on demand with optional context data
+- [x] **Execution History:** Track workflow execution status, per-node results, and timestamped logs
+- [x] **Script Nodes:** Custom Shell script execution nodes with output capture
+- [x] **Notification Nodes:** Send alerts via configured notification channels
+- [x] **One-Click Stack Deployment:** Deploy full infrastructure (databases, apps, domains) from a workflow diagram
 
 ---
 
@@ -332,7 +333,26 @@ Let users personalize what they see. Not everyone runs email servers or manages 
 
 ---
 
-## Phase 25: Agent Fleet Management (Planned)
+## Phase 25: Workflow Engine — Triggers & Completion (Completed)
+
+**Priority: High**
+
+Complete the workflow engine with proper execution logic, missing triggers, and production-grade reliability.
+
+- [x] **DAG Execution:** Full directed acyclic graph traversal with parallel branch support (replace current linear BFS)
+- [x] **Logic Node Evaluation:** If/Else condition evaluation with true/false branching
+- [x] **Variable Interpolation:** Pass data between steps using `${node_id.field}` and `{{placeholder}}` syntax in node configs
+- [x] **Webhook Triggers:** Register `/hooks/<webhook_id>` endpoint to fire workflows on incoming HTTP requests
+- [x] **Event Triggers:** Run workflows on system events (health check failure, high CPU/memory, git push, app stopped)
+- [x] **Notification Templating:** Message placeholder substitution (`${node_id.stdout}`, `{{workflow_name}}`) in notification nodes
+- [x] **Execution Timeouts:** Configurable timeout per node (1–3600s) to prevent hung workflows
+- [x] **Retry on Failure:** Configurable retry count (0–5) and delay per node
+- [x] **Circular Dependency Detection:** Kahn's algorithm validates graph on save and before execution
+- [x] **Script Sandboxing:** Timeout enforcement, output size limits, explicit `bash -c`/`python3 -c` execution
+
+---
+
+## Phase 26: Agent Fleet Management (Planned)
 
 **Priority: High**
 
@@ -352,7 +372,7 @@ Level up agent management from "connect and monitor" to full fleet control.
 
 ---
 
-## Phase 26: Cross-Server Monitoring Dashboard (Planned)
+## Phase 27: Cross-Server Monitoring Dashboard (Planned)
 
 **Priority: High**
 
@@ -371,7 +391,7 @@ Fleet-wide visibility — see everything at a glance and catch problems early.
 
 ---
 
-## Phase 27: Agent Plugin System (Planned)
+## Phase 28: Agent Plugin System (Planned)
 
 **Priority: High**
 
@@ -393,7 +413,7 @@ Make the agent extensible — let users add custom capabilities without modifyin
 
 ---
 
-## Phase 28: Server Templates & Config Sync (Planned)
+## Phase 29: Server Templates & Config Sync (Planned)
 
 **Priority: Medium**
 
@@ -412,7 +432,7 @@ Define what a server should look like, apply it, and detect when it drifts.
 
 ---
 
-## Phase 29: Multi-Tenancy & Workspaces (Planned)
+## Phase 30: Multi-Tenancy & Workspaces (Planned)
 
 **Priority: Medium**
 
@@ -431,7 +451,7 @@ Isolate servers by team, client, or project. Essential for agencies, MSPs, and l
 
 ---
 
-## Phase 30: Advanced SSL Features (Planned)
+## Phase 31: Advanced SSL Features (Planned)
 
 **Priority: Medium**
 
@@ -445,7 +465,7 @@ Isolate servers by team, client, or project. Essential for agencies, MSPs, and l
 
 ---
 
-## Phase 31: DNS Zone Management (Planned)
+## Phase 32: DNS Zone Management (Planned)
 
 **Priority: Medium**
 
@@ -462,7 +482,7 @@ Full DNS record management with provider API integration.
 
 ---
 
-## Phase 32: Nginx Advanced Configuration (Planned)
+## Phase 33: Nginx Advanced Configuration (Planned)
 
 **Priority: Medium**
 
@@ -480,7 +500,7 @@ Go beyond basic virtual hosts — full reverse proxy and performance configurati
 
 ---
 
-## Phase 33: Status Page & Health Checks (Planned)
+## Phase 34: Status Page & Health Checks (Planned)
 
 **Priority: Medium**
 
@@ -499,7 +519,7 @@ Public-facing status page and automated health monitoring.
 
 ---
 
-## Phase 34: Server Provisioning APIs (Planned)
+## Phase 35: Server Provisioning APIs (Planned)
 
 **Priority: Medium**
 
@@ -518,7 +538,7 @@ Spin up and manage cloud servers directly from the panel.
 
 ---
 
-## Phase 35: Performance Optimization (Planned)
+## Phase 36: Performance Optimization (Planned)
 
 **Priority: Low**
 
@@ -531,7 +551,7 @@ Spin up and manage cloud servers directly from the panel.
 
 ---
 
-## Phase 36: Mobile App (Future)
+## Phase 37: Mobile App (Future)
 
 **Priority: Low — v3.0+**
 
@@ -543,7 +563,7 @@ Spin up and manage cloud servers directly from the panel.
 
 ---
 
-## Phase 37: Marketplace & Extensions (Future)
+## Phase 38: Marketplace & Extensions (Future)
 
 **Priority: Low — v3.0+**
 
@@ -566,7 +586,7 @@ Spin up and manage cloud servers directly from the panel.
 | v1.3.0 | Email server, API enhancements | Completed |
 | v1.4.0 | Team & permissions, SSO & OAuth login | Completed |
 | v1.5.0 | New UI, Visual Designer, Services Page | Current |
-| v1.6.0 | Advanced Automation Engine, fleet management | Planned |
+| v1.6.0 | Workflow triggers & completion, fleet management | Planned |
 | v1.7.0 | Cross-server monitoring, agent plugin system | Planned |
 | v1.8.0 | Server templates, multi-tenancy | Planned |
 | v1.9.0 | Advanced SSL, DNS management, Nginx config | Planned |
