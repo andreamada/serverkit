@@ -3662,6 +3662,38 @@ class ApiService {
             method: 'POST', body: { zone_file: zoneFile }
         });
     }
+    // ========================================
+    // Nginx Advanced endpoints
+    // ========================================
+    async getNginxProxyRules(domain) {
+        return this.request(`/nginx/advanced/proxy/${domain}`);
+    }
+
+    async createNginxProxy(data) {
+        return this.request('/nginx/advanced/proxy', { method: 'POST', body: data });
+    }
+
+    async testNginxConfig() {
+        return this.request('/nginx/advanced/test', { method: 'POST' });
+    }
+
+    async reloadNginx() {
+        return this.request('/nginx/advanced/reload', { method: 'POST' });
+    }
+
+    async previewNginxDiff(domain, config) {
+        return this.request('/nginx/advanced/diff', {
+            method: 'POST', body: { domain, config }
+        });
+    }
+
+    async getNginxVhostLogs(domain, type = 'access', lines = 100) {
+        return this.request(`/nginx/advanced/logs/${domain}?type=${type}&lines=${lines}`);
+    }
+
+    async getNginxLBMethods() {
+        return this.request('/nginx/advanced/lb-methods');
+    }
 }
 
 export const api = new ApiService();

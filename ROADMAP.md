@@ -482,21 +482,21 @@ Full DNS record management with provider API integration.
 
 ---
 
-## Phase 33: Nginx Advanced Configuration (Planned)
+## Phase 33: Nginx Advanced Configuration (Completed)
 
 **Priority: Medium**
 
 Go beyond basic virtual hosts — full reverse proxy and performance configuration.
 
-- [ ] Visual reverse proxy rule builder (upstream servers, load balancing methods)
-- [ ] Load balancing configuration (round-robin, least connections, IP hash)
-- [ ] Caching rules editor (proxy cache zones, TTLs, cache bypass rules)
-- [ ] Rate limiting at proxy level (per-IP, per-route)
-- [ ] Custom location block editor with syntax validation
-- [ ] Header manipulation (add/remove/modify request/response headers)
-- [ ] Nginx config syntax check before applying changes
-- [ ] Config diff preview before saving
-- [ ] Access/error log viewer per virtual host
+- [x] Visual reverse proxy rule builder (upstream servers, load balancing methods)
+- [x] Load balancing configuration (round-robin, least connections, IP hash)
+- [x] Caching rules editor (proxy cache zones, TTLs, cache bypass rules)
+- [x] Rate limiting at proxy level (per-IP, per-route)
+- [x] Custom location block editor with syntax validation
+- [x] Header manipulation (add/remove/modify request/response headers)
+- [x] Nginx config syntax check before applying changes
+- [x] Config diff preview before saving
+- [x] Access/error log viewer per virtual host
 
 ---
 
