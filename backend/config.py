@@ -1,5 +1,6 @@
 import os
 import sys
+import warnings
 from datetime import timedelta
 
 # Default insecure keys that must be changed in production
@@ -20,7 +21,7 @@ class Config:
 
     # JWT
     JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY', 'jwt-secret-key-change-in-production')
-    JWT_ACCESS_TOKEN_EXPIRES = timedelta(hours=1)
+    JWT_ACCESS_TOKEN_EXPIRES = timedelta(minutes=15)
     JWT_REFRESH_TOKEN_EXPIRES = timedelta(days=30)
 
     # CORS - Allow both dev server and Flask server
@@ -29,6 +30,13 @@ class Config:
 
 class DevelopmentConfig(Config):
     DEBUG = True
+
+    @classmethod
+    def init_app(cls, app):
+        if app.config.get('SECRET_KEY') == 'dev-secret-key-change-in-production':
+            warnings.warn('WARNING: Using default SECRET_KEY. Change before deploying.')
+        if app.config.get('JWT_SECRET_KEY') == 'jwt-secret-key-change-in-production':
+            warnings.warn('WARNING: Using default JWT_SECRET_KEY. Change before deploying.')
 
 
 class TestingConfig(Config):
@@ -54,6 +62,21 @@ class ProductionConfig(Config):
             print("FATAL: JWT_SECRET_KEY is set to a default insecure value in production mode!", file=sys.stderr)
             print("Generate a secure key with: python -c \"import secrets; print(secrets.token_hex(32))\"", file=sys.stderr)
             sys.exit(1)
+
+    @classmethod
+    def init_app(cls, app):
+        """Validate production configuration."""
+        insecure_keys = ['dev-secret-key-change-in-production', 'jwt-secret-key-change-in-production']
+        if app.config['SECRET_KEY'] in insecure_keys:
+            raise ValueError('CRITICAL: SECRET_KEY must be changed for production deployment')
+        if app.config['JWT_SECRET_KEY'] in insecure_keys:
+            raise ValueError('CRITICAL: JWT_SECRET_KEY must be changed for production deployment')
+        # Validate CORS origins
+        cors_raw = os.environ.get('CORS_ORIGINS', '')
+        cors_origins = [o.strip() for o in cors_raw.split(',') if o.strip()]
+        if not cors_origins:
+            raise ValueError('CORS_ORIGINS must be explicitly set in production')
+        app.config['CORS_ORIGINS'] = cors_origins
 
 
 config = {

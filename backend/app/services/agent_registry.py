@@ -7,9 +7,12 @@ and handles agent lifecycle events.
 
 import hmac
 import hashlib
+import logging
 import secrets
 import time
 import threading
+
+logger = logging.getLogger(__name__)
 from datetime import datetime, timedelta
 from typing import Dict, Optional, Callable, Any
 from dataclasses import dataclass, field
@@ -472,10 +475,17 @@ class AgentRegistry:
         """Handle command result from agent"""
         agent = self.get_agent_by_socket(socket_id)
         if not agent:
+            logger.warning(f"Command result from unknown socket: {socket_id}")
             return
 
         command_id = result.get('command_id')
         if not command_id:
+            logger.warning(f"Command result missing command_id from agent: {agent.server_id}")
+            return
+
+        # Validate command_id format to prevent injection
+        if not isinstance(command_id, str) or len(command_id) > 64:
+            logger.warning(f"Invalid command_id format from agent: {agent.server_id}")
             return
 
         with self._lock:
@@ -519,7 +529,7 @@ class AgentRegistry:
 
         # Check timestamp (allow 5 minute window)
         now = int(time.time() * 1000)
-        if abs(now - timestamp) > 300000:  # 5 minutes
+        if abs(now - timestamp) > 60000:  # 60 seconds
             if ip_address:
                 anomaly_detection_service.track_auth_attempt(None, False, ip_address)
             return None
@@ -574,6 +584,11 @@ class AgentRegistry:
         # Authentication successful
         if ip_address:
             anomaly_detection_service.track_auth_attempt(server.id, True, ip_address)
+
+        # TODO: Implement per-message session token validation. Currently, the session
+        # token is issued at auth time but not verified on each subsequent message.
+        # Full session-per-message validation requires protocol changes on both the
+        # agent (Go) and backend sides.
 
         return server
 

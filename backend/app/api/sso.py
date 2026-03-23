@@ -10,6 +10,7 @@ from app.models.oauth_identity import OAuthIdentity
 from app.services import sso_service
 from app.services.settings_service import SettingsService
 from app.services.audit_service import AuditService
+from app.middleware.rbac import admin_required
 
 sso_bp = Blueprint('sso', __name__)
 
@@ -199,12 +200,10 @@ def unlink_provider(provider):
 # ------------------------------------------------------------------
 
 @sso_bp.route('/admin/config', methods=['GET'])
-@jwt_required()
+@admin_required
 def get_sso_config():
     """All SSO settings (secrets redacted)."""
     user = User.query.get(get_jwt_identity())
-    if not user or not user.is_admin:
-        return jsonify({'error': 'Admin access required'}), 403
 
     config = {}
     for key in SettingsService.DEFAULT_SETTINGS:
@@ -220,12 +219,10 @@ def get_sso_config():
 
 
 @sso_bp.route('/admin/config/<provider>', methods=['PUT'])
-@jwt_required()
+@admin_required
 def update_provider_config(provider):
     """Update a provider's SSO config."""
     user = User.query.get(get_jwt_identity())
-    if not user or not user.is_admin:
-        return jsonify({'error': 'Admin access required'}), 403
 
     if provider not in VALID_PROVIDERS:
         return jsonify({'error': f'Invalid provider: {provider}'}), 400
@@ -254,24 +251,18 @@ def update_provider_config(provider):
 
 
 @sso_bp.route('/admin/test/<provider>', methods=['POST'])
-@jwt_required()
+@admin_required
 def test_provider(provider):
     """Test provider connectivity."""
-    user = User.query.get(get_jwt_identity())
-    if not user or not user.is_admin:
-        return jsonify({'error': 'Admin access required'}), 403
-
     result = sso_service.test_provider_connectivity(provider)
     return jsonify(result), 200 if result['ok'] else 400
 
 
 @sso_bp.route('/admin/general', methods=['PUT'])
-@jwt_required()
+@admin_required
 def update_general_settings():
     """Update general SSO settings (auto_provision, force_sso, etc.)."""
     user = User.query.get(get_jwt_identity())
-    if not user or not user.is_admin:
-        return jsonify({'error': 'Admin access required'}), 403
 
     data = request.get_json() or {}
     general_keys = ['sso_auto_provision', 'sso_default_role', 'sso_force_sso', 'sso_allowed_domains']

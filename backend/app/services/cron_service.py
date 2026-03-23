@@ -7,6 +7,7 @@ for cross-platform compatibility.
 
 import os
 import re
+import shlex
 import subprocess
 import platform
 from typing import Dict, List, Optional
@@ -245,6 +246,20 @@ class CronService:
 
         return ', '.join(descriptions) if descriptions else schedule
 
+    BLOCKED_PATTERNS = [';', '&&', '||', '|', '`', '$(', '>', '<', '\n', '\r']
+
+    @classmethod
+    def _validate_command(cls, command: str) -> bool:
+        """Validate cron command to prevent injection."""
+        for pattern in cls.BLOCKED_PATTERNS:
+            if pattern in command:
+                return False
+        # Require absolute paths
+        parts = shlex.split(command)
+        if parts and not parts[0].startswith('/'):
+            return False
+        return True
+
     @classmethod
     def add_job(cls, schedule: str, command: str, name: str = None,
                 description: str = None) -> Dict:
@@ -256,6 +271,9 @@ class CronService:
         # Validate command (basic security check)
         if not command or not command.strip():
             return {'success': False, 'error': 'Command cannot be empty'}
+
+        if not cls._validate_command(command):
+            return {'success': False, 'error': 'Invalid command: must use absolute paths and cannot contain shell operators (;, &&, ||, |, `, $())'}
 
         # Generate job ID
         job_id = f"job_{datetime.now().strftime('%Y%m%d%H%M%S')}"
@@ -594,8 +612,7 @@ class CronService:
         try:
             # Run the command
             result = subprocess.run(
-                command,
-                shell=True,
+                ['bash', '-c', command],
                 capture_output=True,
                 text=True,
                 timeout=60

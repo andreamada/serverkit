@@ -808,8 +808,7 @@ class TemplateService:
             env.update(variables)
 
             result = subprocess.run(
-                script,
-                shell=True,
+                ['bash', '-c', script],
                 cwd=cwd,
                 env=env,
                 capture_output=True,

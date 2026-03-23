@@ -299,8 +299,13 @@ class FileService:
         if not os.path.exists(old_path):
             return {'success': False, 'error': 'Path not found'}
 
+        # Validate new_name has no path separators
+        if '/' in new_name or '\\' in new_name or '..' in new_name:
+            return {'success': False, 'error': 'Invalid filename: path separators not allowed'}
+
         new_path = os.path.join(os.path.dirname(old_path), new_name)
 
+        # Re-validate the constructed path
         if not cls.is_path_allowed(new_path):
             return {'success': False, 'error': 'Access denied: target path not allowed'}
 
@@ -370,6 +375,9 @@ class FileService:
         try:
             # Convert octal string to int
             mode_int = int(mode, 8)
+            # Validate permission mode
+            if mode_int < 0o000 or mode_int > 0o777:
+                return {'success': False, 'error': 'Invalid permission mode. Must be between 000 and 777.'}
             os.chmod(path, mode_int)
             return {'success': True, 'path': path, 'mode': mode}
         except ValueError:

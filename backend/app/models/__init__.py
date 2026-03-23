@@ -21,6 +21,7 @@ from app.models.api_key import ApiKey
 from app.models.api_usage import ApiUsageLog, ApiUsageSummary
 from app.models.event_subscription import EventSubscription, EventDelivery
 from app.models.invitation import Invitation
+from app.models.metric_alert import ServerAlertThreshold, MetricAlert
 
 __all__ = [
     'User', 'Application', 'Domain', 'EnvironmentVariable', 'EnvironmentVariableHistory',
@@ -31,5 +32,6 @@ __all__ = [
     'EnvironmentActivity', 'PromotionJob', 'SanitizationProfile',
     'EmailDomain', 'EmailAccount', 'EmailAlias', 'EmailForwardingRule', 'DNSProviderConfig',
     'OAuthIdentity', 'ApiKey', 'ApiUsageLog', 'ApiUsageSummary',
-    'EventSubscription', 'EventDelivery', 'Invitation'
+    'EventSubscription', 'EventDelivery', 'Invitation',
+    'ServerAlertThreshold', 'MetricAlert'
 ]

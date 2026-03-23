@@ -4,10 +4,14 @@ Two-Factor Authentication API
 Provides endpoints for enabling, disabling, and managing 2FA.
 """
 
+import logging
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
+from app import limiter
 from app.models import User
 from app.services.totp_service import TOTPService, TwoFactorSetup
+
+logger = logging.getLogger(__name__)
 
 two_factor_bp = Blueprint('two_factor', __name__)
 
@@ -117,6 +121,8 @@ def disable_2fa():
     if not success:
         return jsonify({'error': error}), 400
 
+    logger.info(f"2FA disabled for user {user.id} - existing sessions remain valid (TODO: implement session invalidation)")
+
     return jsonify({
         'message': '2FA has been disabled successfully'
     }), 200
@@ -156,6 +162,7 @@ def regenerate_backup_codes():
 
 
 @two_factor_bp.route('/verify', methods=['POST'])
+@limiter.limit("5 per minute")
 def verify_2fa_code():
     """
     Verify a 2FA code during login.

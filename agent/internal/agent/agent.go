@@ -3,12 +3,14 @@ package agent
 import (
 	"bufio"
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net"
 	"os"
-	"runtime"
 	"sync"
 	"time"
 
@@ -259,48 +261,71 @@ func (a *Agent) discoveryLoop(ctx context.Context) {
 			var req struct {
 				Type      string `json:"type"`
 				Timestamp int64  `json:"timestamp"`
+				Signature string `json:"signature"`
 			}
 			if err := json.Unmarshal(buf[:n], &req); err != nil || (req.Type != "discovery_request" && req.Type != string(protocol.TypeDiscoveryRequest)) {
 				continue
 			}
 
-			// Respond with agent info
-			hostname, _ := os.Hostname()
-			info := protocol.SystemInfo{
-				Hostname:     hostname,
-				OS:           runtime.GOOS,
-				OSVersion:    "", // Could populate this
-				Architecture: runtime.GOARCH,
-				AgentVersion: Version,
+			// If agent has no credentials (not registered), don't respond to discovery
+			if a.cfg.Auth.APIKey == "" {
+				continue
 			}
 
+			// Validate timestamp is within 60 seconds
+			now := time.Now().UnixMilli()
+			if req.Timestamp <= 0 || abs(now-req.Timestamp) > 60000 {
+				a.log.Debug("Ignoring discovery request with stale timestamp")
+				continue
+			}
+
+			// Verify HMAC signature
+			if req.Signature == "" {
+				a.log.Debug("Ignoring discovery request without signature")
+				continue
+			}
+			expectedMessage := fmt.Sprintf("discovery:%d", req.Timestamp)
+			mac := hmac.New(sha256.New, []byte(a.cfg.Auth.APIKey))
+			mac.Write([]byte(expectedMessage))
+			expectedSignature := hex.EncodeToString(mac.Sum(nil))
+			if !hmac.Equal([]byte(req.Signature), []byte(expectedSignature)) {
+				a.log.Debug("Ignoring discovery request with invalid signature")
+				continue
+			}
+
+			// Respond with minimal agent info (no detailed hardware specs)
+			hostname, _ := os.Hostname()
 			resp := struct {
-				Type         string              `json:"type"`
-				AgentID      string              `json:"agent_id"`
-				Hostname     string              `json:"hostname"`
-				AgentVersion string              `json:"agent_version"`
-				OS           string              `json:"os"`
-				Arch         string              `json:"arch"`
-				Timestamp    int64               `json:"timestamp"`
-				Info         protocol.SystemInfo `json:"info"`
+				Type         string `json:"type"`
+				AgentID      string `json:"agent_id"`
+				Hostname     string `json:"hostname"`
+				Status       string `json:"status"`
+				AgentVersion string `json:"agent_version"`
+				Timestamp    int64  `json:"timestamp"`
 			}{
 				Type:         "discovery",
 				AgentID:      a.cfg.Agent.ID,
 				Hostname:     hostname,
+				Status:       "online",
 				AgentVersion: Version,
-				OS:           runtime.GOOS,
-				Arch:         runtime.GOARCH,
 				Timestamp:    time.Now().UnixMilli(),
-				Info:         info,
 			}
 
 			data, _ := json.Marshal(resp)
-			
+
 			// Send response to remoteAddr on port+1
 			respAddr, _ := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", remoteAddr.IP.String(), port+1))
 			conn.WriteToUDP(data, respAddr)
 		}
 	}
+}
+
+// abs returns the absolute value of an int64
+func abs(x int64) int64 {
+	if x < 0 {
+		return -x
+	}
+	return x
 }
 
 // heartbeatLoop sends periodic heartbeats
@@ -389,14 +414,17 @@ func (a *Agent) handleCommand(data []byte) {
 		return
 	}
 
-	// Execute command
+	// Execute command with enforced maximum timeout
 	start := time.Now()
-	ctx := context.Background()
-	if cmd.Timeout > 0 {
-		var cancel context.CancelFunc
-		ctx, cancel = context.WithTimeout(ctx, time.Duration(cmd.Timeout)*time.Millisecond)
-		defer cancel()
+	maxTimeout := 5 * time.Minute
+	cmdTimeout := time.Duration(cmd.Timeout) * time.Millisecond
+
+	if cmdTimeout <= 0 || cmdTimeout > maxTimeout {
+		cmdTimeout = maxTimeout
 	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
+	defer cancel()
 
 	result, err := handler(ctx, cmd.Params)
 	duration := time.Since(start)

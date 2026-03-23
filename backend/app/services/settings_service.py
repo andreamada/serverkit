@@ -120,15 +120,15 @@ class SettingsService:
 
     @staticmethod
     def needs_setup():
-        """Check if initial setup is required."""
-        # If no users exist, setup is needed
+        """Check if initial setup is needed."""
+        from app.models.user import User
         user_count = User.query.count()
         if user_count == 0:
             return True
-
-        # Check setup_completed setting
         setup_completed = SettingsService.get('setup_completed', False)
-        return not setup_completed
+        if setup_completed:
+            return False  # Once completed, never re-enable without admin action
+        return True
 
     @staticmethod
     def complete_setup(user_id=None):

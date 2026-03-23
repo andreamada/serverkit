@@ -6,9 +6,13 @@ Provides encryption/decryption for sensitive data like API secrets.
 
 import os
 import base64
+import warnings
+import logging
 from cryptography.fernet import Fernet, InvalidToken
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+
+logger = logging.getLogger(__name__)
 
 
 def get_encryption_key() -> bytes:
@@ -26,6 +30,10 @@ def get_encryption_key() -> bytes:
     """
     key = os.environ.get('SERVERKIT_ENCRYPTION_KEY')
     if not key:
+        if os.environ.get('FLASK_ENV') == 'production':
+            raise ValueError('CRITICAL: SERVERKIT_ENCRYPTION_KEY must be set in production')
+        logger.warning('SECURITY WARNING: Using derived development encryption key. Set SERVERKIT_ENCRYPTION_KEY for production.')
+        warnings.warn('Using derived development encryption key - not suitable for production')
         # In development, use a default key (NOT for production!)
         # This allows the system to work without explicit configuration
         default_key = "DEV_ONLY_NOT_SECURE_CHANGE_IN_PRODUCTION_KEY"

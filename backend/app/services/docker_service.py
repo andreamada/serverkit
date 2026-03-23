@@ -1,6 +1,7 @@
 import subprocess
 import json
 import os
+import shlex
 import yaml
 from datetime import datetime
 
@@ -138,7 +139,7 @@ class DockerService:
             cmd.append(image)
 
             if command:
-                cmd.extend(command.split())
+                cmd.extend(shlex.split(command))
 
             result = subprocess.run(cmd, capture_output=True, text=True)
 
@@ -183,7 +184,7 @@ class DockerService:
             cmd.append(image)
 
             if command:
-                cmd.extend(command.split())
+                cmd.extend(shlex.split(command))
 
             result = subprocess.run(cmd, capture_output=True, text=True)
 
@@ -490,7 +491,7 @@ class DockerService:
             if tty:
                 cmd.append('-t')
             cmd.append(container_id)
-            cmd.extend(command.split())
+            cmd.extend(shlex.split(command))
 
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
             return {

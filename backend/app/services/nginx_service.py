@@ -7,6 +7,19 @@ from pathlib import Path
 from app.utils.system import ServiceControl, run_privileged, is_command_available
 
 
+def _validate_domain(domain: str) -> bool:
+    """Validate domain name to prevent nginx config injection."""
+    return bool(re.match(r'^(?:[a-z0-9](?:[a-z0-9\-]{0,61}[a-z0-9])?\.)*[a-z0-9](?:[a-z0-9\-]{0,61}[a-z0-9])?$', domain, re.IGNORECASE))
+
+
+def _validate_path(path: str) -> bool:
+    """Validate filesystem path for nginx config."""
+    # Block path traversal and special characters
+    if '..' in path or '\n' in path or '\r' in path or ';' in path:
+        return False
+    return bool(re.match(r'^/[a-zA-Z0-9/_\-\.]+$', path))
+
+
 class NginxService:
     """Service for Nginx configuration management."""
 
@@ -414,6 +427,15 @@ server {{
         """Create a new site configuration."""
         if not domains:
             return {'success': False, 'error': 'At least one domain is required'}
+
+        # Validate all domains
+        for domain in domains:
+            if not _validate_domain(domain):
+                return {'success': False, 'error': f'Invalid domain name: {domain}'}
+
+        # Validate root_path if provided
+        if root_path and not _validate_path(root_path):
+            return {'success': False, 'error': f'Invalid root path: {root_path}'}
 
         domains_str = ' '.join(domains)
 

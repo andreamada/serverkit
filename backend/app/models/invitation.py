@@ -16,7 +16,7 @@ class Invitation(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(255), nullable=True)  # Nullable for link-only invites
     token = db.Column(db.String(64), unique=True, nullable=False, index=True,
-                      default=lambda: uuid4().hex)
+                      default=lambda: __import__('secrets').token_urlsafe(32))
     role = db.Column(db.String(20), nullable=False, default='developer')
     permissions = db.Column(db.Text, nullable=True)  # JSON custom permissions
     invited_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)

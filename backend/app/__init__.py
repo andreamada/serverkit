@@ -1,5 +1,5 @@
 import os
-from flask import Flask, send_from_directory
+from flask import Flask, send_from_directory, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import JWTManager
 from flask_cors import CORS
@@ -222,6 +222,10 @@ def create_app(config_name=None):
     from app.api.servers import servers_bp
     app.register_blueprint(servers_bp, url_prefix='/api/v1/servers')
 
+    # Register blueprints - Fleet Monitor (Cross-server monitoring)
+    from app.api.fleet_monitor import fleet_monitor_bp
+    app.register_blueprint(fleet_monitor_bp, url_prefix='/api/v1/fleet-monitor')
+
     # Handle database migrations (Alembic)
     with app.app_context():
         from app.services.migration_service import MigrationService
@@ -249,6 +253,29 @@ def create_app(config_name=None):
 
         # Start hourly analytics aggregation and event retry threads
         _start_api_background_threads(app)
+
+    # Request body size limit
+    app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB limit
+
+    # Reject 2FA pending tokens on non-2FA endpoints
+    @app.before_request
+    def check_2fa_pending():
+        """Reject 2FA pending tokens on non-2FA endpoints."""
+        from flask_jwt_extended import verify_jwt_in_request, get_jwt
+        if request.endpoint and request.path.startswith('/api/'):
+            # Allow 2FA verification endpoints
+            if '/two-factor/verify' in request.path or '/two-factor/verify-backup' in request.path:
+                return
+            # Allow auth endpoints (login, refresh)
+            if '/auth/login' in request.path or '/auth/refresh' in request.path:
+                return
+            try:
+                verify_jwt_in_request()
+                claims = get_jwt()
+                if claims.get('2fa_pending'):
+                    return jsonify({'error': '2FA verification required'}), 403
+            except Exception:
+                pass  # Let @jwt_required handle actual auth errors
 
     # Serve frontend for root path
     @app.route('/')

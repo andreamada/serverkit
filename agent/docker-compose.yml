@@ -15,13 +15,13 @@
 
 services:
   agent:
-    image: jhd3197/serverkit-agent:latest
+    image: jhd3197/serverkit-agent:${AGENT_VERSION:-1.0.0}
     container_name: serverkit-agent
     restart: unless-stopped
 
-    # Run as root to access Docker socket
-    # The agent drops privileges internally where possible
-    user: root
+    # Use docker group for socket access instead of running as root
+    group_add:
+      - docker
 
     volumes:
       # Docker socket for container management

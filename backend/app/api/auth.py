@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import (
@@ -11,6 +12,8 @@ from app import db, limiter
 from app.models import User, AuditLog, SystemSettings
 from app.services.settings_service import SettingsService
 from app.services.audit_service import AuditService
+
+logger = logging.getLogger(__name__)
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -64,8 +67,12 @@ def register():
 
     # Check if registration is allowed
     is_first_user = User.query.count() == 0
-    if not is_first_user and not invitation and not SettingsService.is_registration_enabled():
-        return jsonify({'error': 'Registration is disabled'}), 403
+    if not is_first_user and not invitation:
+        if not SettingsService.needs_setup() and not SettingsService.is_registration_enabled():
+            logger.warning(f"Registration attempt blocked - setup already completed. IP: {request.remote_addr}")
+            return jsonify({'error': 'Registration is disabled'}), 403
+        if not SettingsService.is_registration_enabled():
+            return jsonify({'error': 'Registration is disabled'}), 403
 
     email = data.get('email')
     username = data.get('username')
@@ -75,10 +82,10 @@ def register():
         return jsonify({'error': 'Missing required fields'}), 400
 
     if User.query.filter_by(email=email).first():
-        return jsonify({'error': 'Email already registered'}), 409
+        return jsonify({'error': 'This email or username is unavailable'}), 409
 
     if User.query.filter_by(username=username).first():
-        return jsonify({'error': 'Username already taken'}), 409
+        return jsonify({'error': 'This email or username is unavailable'}), 409
 
     if len(password) < 8:
         return jsonify({'error': 'Password must be at least 8 characters'}), 400
@@ -285,6 +292,7 @@ def get_current_user():
 
 
 @auth_bp.route('/me', methods=['PUT'])
+@limiter.limit("3 per minute")
 @jwt_required()
 def update_current_user():
     current_user_id = get_jwt_identity()

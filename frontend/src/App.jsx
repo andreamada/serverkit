@@ -32,6 +32,7 @@ import WorkflowBuilder from './pages/WorkflowBuilder';
 import Servers from './pages/Servers';
 import ServerDetail from './pages/ServerDetail';
 import AgentFleet from './pages/AgentFleet';
+import FleetMonitor from './pages/FleetMonitor';
 import Downloads from './pages/Downloads';
 import WordPress from './pages/WordPress';
 import WordPressDetail from './pages/WordPressDetail';
@@ -71,6 +72,8 @@ const PAGE_TITLES = {
     '/terminal': 'Terminal',
     '/settings': 'Settings',
     '/migrate': 'Database Migration',
+    '/fleet': 'Agent Fleet',
+    '/fleet-monitor': 'Fleet Monitor',
 };
 
 function PageTitleUpdater() {
@@ -206,6 +209,7 @@ function AppRoutes() {
                 <Route path="servers/:id" element={<ServerDetail />} />
                 <Route path="servers/:id/:tab" element={<ServerDetail />} />
                 <Route path="fleet" element={<AgentFleet />} />
+                <Route path="fleet-monitor" element={<FleetMonitor />} />
                 <Route path="downloads" element={<Downloads />} />
                 <Route path="firewall" element={<Navigate to="/security/firewall" replace />} />
                 <Route path="git" element={<Git />} />

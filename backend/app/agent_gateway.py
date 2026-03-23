@@ -5,6 +5,7 @@ WebSocket gateway for ServerKit agents.
 Handles agent connections, authentication, and message routing.
 """
 
+from collections import defaultdict
 from flask import request
 from flask_socketio import Namespace, emit, disconnect
 import json
@@ -14,6 +15,22 @@ from app.services.agent_registry import agent_registry
 from app.models.server import Server
 from app.utils.ip_utils import is_ip_allowed
 from app.services.anomaly_detection_service import anomaly_detection_service
+
+# In-memory rate limiter for agent authentication
+_auth_attempts = defaultdict(list)
+_AUTH_RATE_LIMIT = 10  # max attempts per window
+_AUTH_RATE_WINDOW = 60  # seconds
+
+
+def _check_auth_rate_limit(ip_address: str) -> bool:
+    """Check if IP has exceeded auth rate limit."""
+    now = time.time()
+    # Clean old entries
+    _auth_attempts[ip_address] = [t for t in _auth_attempts[ip_address] if now - t < _AUTH_RATE_WINDOW]
+    if len(_auth_attempts[ip_address]) >= _AUTH_RATE_LIMIT:
+        return False
+    _auth_attempts[ip_address].append(now)
+    return True
 
 
 class AgentNamespace(Namespace):
@@ -50,6 +67,11 @@ class AgentNamespace(Namespace):
         }
         """
         sid = request.sid
+        ip_address = request.remote_addr
+        if not _check_auth_rate_limit(ip_address):
+            emit('auth_response', {'success': False, 'error': 'Rate limit exceeded'}, room=request.sid, namespace='/agent')
+            return
+
         agent_id = data.get('agent_id')
         api_key_prefix = data.get('api_key_prefix')
         signature = data.get('signature')

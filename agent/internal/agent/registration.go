@@ -3,7 +3,10 @@ package agent
 import (
 	"bytes"
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
 	"crypto/tls"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -96,8 +99,7 @@ func (r *Registration) Register(serverURL, token, name string) (*RegistrationRes
 		Timeout: 30 * time.Second,
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
-				// Allow insecure for development - in production this should be strict
-				InsecureSkipVerify: strings.HasPrefix(serverURL, "http://") || strings.Contains(serverURL, "localhost"),
+				InsecureSkipVerify: os.Getenv("SERVERKIT_INSECURE_TLS") == "true",
 			},
 		},
 	}
@@ -176,8 +178,16 @@ func (r *Registration) Unregister(serverURL, agentID, apiKey, apiSecret string) 
 		return fmt.Errorf("failed to create request: %w", err)
 	}
 
-	req.Header.Set("X-API-Key", apiKey)
-	req.Header.Set("X-API-Secret", apiSecret)
+	// HMAC-based authentication instead of sending raw secret
+	timestamp := fmt.Sprintf("%d", time.Now().UnixMilli())
+	message := fmt.Sprintf("%s:%s", agentID, timestamp)
+	mac := hmac.New(sha256.New, []byte(apiSecret))
+	mac.Write([]byte(message))
+	signature := hex.EncodeToString(mac.Sum(nil))
+
+	req.Header.Set("X-Agent-ID", agentID)
+	req.Header.Set("X-Timestamp", timestamp)
+	req.Header.Set("X-Signature", signature)
 
 	resp, err := client.Do(req)
 	if err != nil {

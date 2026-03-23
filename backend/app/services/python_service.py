@@ -552,8 +552,7 @@ application = get_wsgi_application()
             env.update(env_vars)
 
             result = subprocess.run(
-                command,
-                shell=True,
+                ['bash', '-c', command],
                 cwd=app_path,
                 env=env,
                 capture_output=True,

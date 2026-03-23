@@ -447,8 +447,7 @@ class GitDeployService:
         """Run a deployment script."""
         try:
             result = subprocess.run(
-                script,
-                shell=True,
+                ['bash', '-c', script],
                 cwd=cwd,
                 capture_output=True,
                 text=True,

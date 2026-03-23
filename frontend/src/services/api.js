@@ -3025,6 +3025,73 @@ class ApiService {
         return this.request(`/servers/fleet/diagnostics/${serverId}`);
     }
 
+    // ========================================
+    // Fleet Monitor (Cross-Server Monitoring) endpoints
+    // ========================================
+    async getFleetHeatmap(groupId) {
+        const query = groupId ? `?group_id=${groupId}` : '';
+        return this.request(`/fleet-monitor/heatmap${query}`);
+    }
+
+    async getFleetComparison(serverIds, metric, period) {
+        const ids = serverIds.join(',');
+        return this.request(`/fleet-monitor/comparison?ids=${ids}&metric=${metric}&period=${period}`);
+    }
+
+    async getFleetAlerts(params = {}) {
+        const searchParams = new URLSearchParams();
+        if (params.status) searchParams.append('status', params.status);
+        if (params.severity) searchParams.append('severity', params.severity);
+        if (params.server_id) searchParams.append('server_id', params.server_id);
+        if (params.limit) searchParams.append('limit', params.limit);
+        const query = searchParams.toString();
+        return this.request(`/fleet-monitor/alerts${query ? '?' + query : ''}`);
+    }
+
+    async acknowledgeFleetAlert(alertId) {
+        return this.request(`/fleet-monitor/alerts/${alertId}/acknowledge`, { method: 'POST' });
+    }
+
+    async resolveFleetAlert(alertId) {
+        return this.request(`/fleet-monitor/alerts/${alertId}/resolve`, { method: 'POST' });
+    }
+
+    async getFleetThresholds(serverId) {
+        const query = serverId ? `?server_id=${serverId}` : '';
+        return this.request(`/fleet-monitor/thresholds${query}`);
+    }
+
+    async createFleetThreshold(data) {
+        return this.request('/fleet-monitor/thresholds', { method: 'POST', body: data });
+    }
+
+    async deleteFleetThreshold(thresholdId) {
+        return this.request(`/fleet-monitor/thresholds/${thresholdId}`, { method: 'DELETE' });
+    }
+
+    async getFleetAnomalies(serverId) {
+        const query = serverId ? `?server_id=${serverId}` : '';
+        return this.request(`/fleet-monitor/anomalies${query}`);
+    }
+
+    async getCapacityForecast(serverId, metric = 'disk') {
+        return this.request(`/fleet-monitor/forecast/${serverId}?metric=${metric}`);
+    }
+
+    async searchFleet(query, type = 'any') {
+        return this.request(`/fleet-monitor/search?q=${encodeURIComponent(query)}&type=${type}`);
+    }
+
+    async exportFleetCsv(serverIds, metric, period) {
+        const ids = serverIds.join(',');
+        const url = `${this.baseUrl}/fleet-monitor/export/csv?ids=${ids}&metric=${metric}&period=${period}`;
+        const token = this.getToken();
+        const response = await fetch(url, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+        return response.blob();
+    }
+
     // ── Email Server ──
     async getEmailStatus() { return this.request('/email/status'); }
     async installEmailServer(data = {}) { return this.request('/email/install', { method: 'POST', body: JSON.stringify(data) }); }

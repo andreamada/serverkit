@@ -481,8 +481,7 @@ class BuildService:
                 env.update(env_vars)
 
             process = subprocess.Popen(
-                build_cmd,
-                shell=True,
+                ['bash', '-c', build_cmd],
                 cwd=app_path,
                 env=env,
                 stdout=subprocess.PIPE,

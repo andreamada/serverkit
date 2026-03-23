@@ -23,8 +23,8 @@ def register_security_headers(app: Flask):
         # Content Security Policy
         csp_directives = [
             "default-src 'self'",
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://unpkg.com",
-            "style-src 'self' 'unsafe-inline' https://unpkg.com",
+            "script-src 'self'",
+            "style-src 'self'",
             "img-src 'self' data: https:",
             "font-src 'self'",
             "connect-src 'self' ws: wss:",

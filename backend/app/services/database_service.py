@@ -1,5 +1,6 @@
 import subprocess
 import os
+import re
 import secrets
 import string
 import json
@@ -8,8 +9,19 @@ from datetime import datetime
 from app import paths
 
 
+def _validate_identifier(name: str, max_length: int = 64) -> bool:
+    """Validate database/user identifiers to prevent SQL injection."""
+    return bool(re.match(r'^[a-zA-Z0-9_$]{1,}$', name)) and len(name) <= max_length
+
+
 class DatabaseService:
-    """Service for managing MySQL/MariaDB and PostgreSQL databases."""
+    """Service for managing MySQL/MariaDB and PostgreSQL databases.
+
+    NOTE (L6): Subprocess timeout values in this service (typically 30s) should be
+    reviewed periodically to ensure they are appropriate. Shorter timeouts reduce
+    the window for resource exhaustion attacks, but may break legitimate long-running
+    operations like large database backups or restores.
+    """
 
     BACKUP_DIR = paths.DB_BACKUP_DIR
 
@@ -51,14 +63,18 @@ class DatabaseService:
         """Execute a MySQL query."""
         try:
             cmd = ['mysql', '-u', 'root']
-            if root_password:
-                cmd.extend([f'-p{root_password}'])
             if database:
                 cmd.extend(['-D', database])
             cmd.extend(['-e', query])
 
+            # Use MYSQL_PWD env var to avoid passing password on CLI
+            env = None
+            if root_password:
+                env = os.environ.copy()
+                env['MYSQL_PWD'] = root_password
+
             result = subprocess.run(
-                cmd, capture_output=True, text=True
+                cmd, capture_output=True, text=True, env=env
             )
             return {
                 'success': result.returncode == 0,
@@ -106,6 +122,12 @@ class DatabaseService:
     @staticmethod
     def mysql_create_database(name, charset='utf8mb4', collation='utf8mb4_unicode_ci', root_password=None):
         """Create a MySQL database."""
+        if not _validate_identifier(name):
+            return {'success': False, 'error': 'Invalid identifier: only alphanumeric characters and underscores allowed'}
+        if not _validate_identifier(charset):
+            return {'success': False, 'error': 'Invalid charset identifier'}
+        if not _validate_identifier(collation, max_length=128):
+            return {'success': False, 'error': 'Invalid collation identifier'}
         query = f"CREATE DATABASE IF NOT EXISTS `{name}` CHARACTER SET {charset} COLLATE {collation};"
         result = DatabaseService.mysql_execute(query, root_password=root_password)
         return result
@@ -113,6 +135,8 @@ class DatabaseService:
     @staticmethod
     def mysql_drop_database(name, root_password=None):
         """Drop a MySQL database."""
+        if not _validate_identifier(name):
+            return {'success': False, 'error': 'Invalid identifier: only alphanumeric characters and underscores allowed'}
         query = f"DROP DATABASE IF EXISTS `{name}`;"
         result = DatabaseService.mysql_execute(query, root_password=root_password)
         return result
@@ -140,13 +164,23 @@ class DatabaseService:
     @staticmethod
     def mysql_create_user(username, password, host='localhost', root_password=None):
         """Create a MySQL user."""
-        query = f"CREATE USER IF NOT EXISTS '{username}'@'{host}' IDENTIFIED BY '{password}';"
+        if not _validate_identifier(username):
+            return {'success': False, 'error': 'Invalid identifier: only alphanumeric characters and underscores allowed'}
+        if not _validate_identifier(host):
+            return {'success': False, 'error': 'Invalid host identifier'}
+        # Use MYSQL_PWD env var to avoid passing password on CLI
+        escaped_password = password.replace("'", "\\'").replace("\\", "\\\\")
+        query = f"CREATE USER IF NOT EXISTS '{username}'@'{host}' IDENTIFIED BY '{escaped_password}';"
         result = DatabaseService.mysql_execute(query, root_password=root_password)
         return result
 
     @staticmethod
     def mysql_drop_user(username, host='localhost', root_password=None):
         """Drop a MySQL user."""
+        if not _validate_identifier(username):
+            return {'success': False, 'error': 'Invalid identifier: only alphanumeric characters and underscores allowed'}
+        if not _validate_identifier(host):
+            return {'success': False, 'error': 'Invalid host identifier'}
         query = f"DROP USER IF EXISTS '{username}'@'{host}';"
         result = DatabaseService.mysql_execute(query, root_password=root_password)
         return result
@@ -154,6 +188,12 @@ class DatabaseService:
     @staticmethod
     def mysql_grant_privileges(username, database, privileges='ALL', host='localhost', root_password=None):
         """Grant privileges to a MySQL user."""
+        if not _validate_identifier(username):
+            return {'success': False, 'error': 'Invalid identifier: only alphanumeric characters and underscores allowed'}
+        if not _validate_identifier(database):
+            return {'success': False, 'error': 'Invalid identifier: only alphanumeric characters and underscores allowed'}
+        if not _validate_identifier(host):
+            return {'success': False, 'error': 'Invalid host identifier'}
         query = f"GRANT {privileges} ON `{database}`.* TO '{username}'@'{host}'; FLUSH PRIVILEGES;"
         result = DatabaseService.mysql_execute(query, root_password=root_password)
         return result
@@ -161,6 +201,12 @@ class DatabaseService:
     @staticmethod
     def mysql_revoke_privileges(username, database, privileges='ALL', host='localhost', root_password=None):
         """Revoke privileges from a MySQL user."""
+        if not _validate_identifier(username):
+            return {'success': False, 'error': 'Invalid identifier: only alphanumeric characters and underscores allowed'}
+        if not _validate_identifier(database):
+            return {'success': False, 'error': 'Invalid identifier: only alphanumeric characters and underscores allowed'}
+        if not _validate_identifier(host):
+            return {'success': False, 'error': 'Invalid host identifier'}
         query = f"REVOKE {privileges} ON `{database}`.* FROM '{username}'@'{host}'; FLUSH PRIVILEGES;"
         result = DatabaseService.mysql_execute(query, root_password=root_password)
         return result
@@ -168,6 +214,10 @@ class DatabaseService:
     @staticmethod
     def mysql_get_user_privileges(username, host='localhost', root_password=None):
         """Get privileges for a MySQL user."""
+        if not _validate_identifier(username):
+            return []
+        if not _validate_identifier(host):
+            return []
         result = DatabaseService.mysql_execute(
             f"SHOW GRANTS FOR '{username}'@'{host}';",
             root_password=root_password
@@ -194,13 +244,17 @@ class DatabaseService:
 
         try:
             cmd = ['mysqldump', '-u', 'root']
-            if root_password:
-                cmd.append(f'-p{root_password}')
             cmd.append(database)
+
+            # Use MYSQL_PWD env var to avoid passing password on CLI
+            env = None
+            if root_password:
+                env = os.environ.copy()
+                env['MYSQL_PWD'] = root_password
 
             # Pipe through gzip
             with open(output_path, 'wb') as f:
-                dump = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                dump = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
                 gzip = subprocess.Popen(['gzip'], stdin=dump.stdout, stdout=f, stderr=subprocess.PIPE)
                 dump.stdout.close()
                 gzip.communicate()
@@ -224,14 +278,18 @@ class DatabaseService:
 
         try:
             cmd = ['mysql', '-u', 'root']
-            if root_password:
-                cmd.append(f'-p{root_password}')
             cmd.append(database)
+
+            # Use MYSQL_PWD env var to avoid passing password on CLI
+            env = None
+            if root_password:
+                env = os.environ.copy()
+                env['MYSQL_PWD'] = root_password
 
             if backup_path.endswith('.gz'):
                 # Decompress and restore
                 gunzip = subprocess.Popen(['gunzip', '-c', backup_path], stdout=subprocess.PIPE)
-                restore = subprocess.Popen(cmd, stdin=gunzip.stdout, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                restore = subprocess.Popen(cmd, stdin=gunzip.stdout, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env=env)
                 gunzip.stdout.close()
                 _, stderr = restore.communicate()
 
@@ -239,7 +297,7 @@ class DatabaseService:
                     return {'success': False, 'error': stderr.decode()}
             else:
                 with open(backup_path, 'r') as f:
-                    result = subprocess.run(cmd, stdin=f, capture_output=True, text=True)
+                    result = subprocess.run(cmd, stdin=f, capture_output=True, text=True, env=env)
                     if result.returncode != 0:
                         return {'success': False, 'error': result.stderr}
 
@@ -555,8 +613,12 @@ class DatabaseService:
 
             # Build mysql command with JSON output format
             cmd = ['mysql', '-u', 'root']
+
+            # Use MYSQL_PWD env var to avoid passing password on CLI
+            env = None
             if root_password:
-                cmd.extend([f'-p{root_password}'])
+                env = os.environ.copy()
+                env['MYSQL_PWD'] = root_password
             cmd.extend([
                 '-D', database,
                 '-e', query,
@@ -570,7 +632,8 @@ class DatabaseService:
                 cmd,
                 capture_output=True,
                 text=True,
-                timeout=timeout
+                timeout=timeout,
+                env=env
             )
 
             execution_time = time.time() - start_time
@@ -1038,10 +1101,13 @@ class DatabaseService:
     def docker_mysql_execute(container_name, query, database=None, user='root', password=None):
         """Execute a MySQL query inside a Docker container."""
         try:
-            cmd = ['docker', 'exec', container_name, 'mysql', '-u', user]
+            cmd = ['docker', 'exec']
 
+            # Use MYSQL_PWD env var to avoid passing password on CLI
             if password:
-                cmd.append(f'-p{password}')
+                cmd.extend(['-e', f'MYSQL_PWD={password}'])
+
+            cmd.extend([container_name, 'mysql', '-u', user])
 
             if database:
                 cmd.extend(['-D', database])
@@ -1137,9 +1203,11 @@ class DatabaseService:
         try:
             start_time = time.time()
 
-            cmd = ['docker', 'exec', container_name, 'mysql', '-u', user]
+            cmd = ['docker', 'exec']
+            # Use MYSQL_PWD env var to avoid passing password on CLI
             if password:
-                cmd.append(f'-p{password}')
+                cmd.extend(['-e', f'MYSQL_PWD={password}'])
+            cmd.extend([container_name, 'mysql', '-u', user])
             cmd.extend([
                 '-D', database,
                 '-e', query,

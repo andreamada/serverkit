@@ -1,0 +1,79 @@
+// ============================================
+// FLEET MONITOR PAGE
+// ============================================
+
+.fleet-heatmap {
+    width: 100%;
+
+    &__header {
+        display: grid;
+        grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr;
+        gap: @space-2;
+        padding: @space-2 @space-3;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        color: @text-secondary;
+        border-bottom: 1px solid @border-subtle;
+    }
+
+    &__row {
+        display: grid;
+        grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr;
+        gap: @space-2;
+        padding: @space-2 @space-3;
+        align-items: center;
+        border-bottom: 1px solid @border-subtle;
+        transition: background 0.15s;
+
+        &:hover {
+            background: @bg-hover;
+        }
+
+        &:last-child {
+            border-bottom: none;
+        }
+    }
+
+    &__server {
+        display: flex;
+        align-items: center;
+        gap: @space-2;
+        font-weight: 500;
+        font-size: 0.875rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    &__cell {
+        text-align: center;
+        padding: @space-1 @space-2;
+        border-radius: @radius-sm;
+        font-size: 0.8125rem;
+        font-weight: 500;
+        font-variant-numeric: tabular-nums;
+        transition: background-color 0.3s;
+    }
+
+    &__label {
+        text-align: center;
+    }
+}
+
+@media (max-width: @breakpoint-md) {
+    .fleet-heatmap {
+        &__header,
+        &__row {
+            grid-template-columns: 1.5fr 1fr 1fr 1fr;
+        }
+
+        // Hide containers and status columns on small screens
+        &__header > :nth-child(5),
+        &__header > :nth-child(6),
+        &__row > :nth-child(5),
+        &__row > :nth-child(6) {
+            display: none;
+        }
+    }
+}

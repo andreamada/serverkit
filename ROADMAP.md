@@ -352,42 +352,42 @@ Complete the workflow engine with proper execution logic, missing triggers, and 
 
 ---
 
-## Phase 26: Agent Fleet Management (Planned)
+## Phase 26: Agent Fleet Management (Completed)
 
 **Priority: High**
 
 Level up agent management from "connect and monitor" to full fleet control.
 
-- [ ] Agent version tracking and compatibility matrix (panel version ↔ agent version)
-- [ ] Push agent upgrades from the panel (single server or fleet-wide rollout)
-- [ ] Staged rollout support — upgrade agents in batches with health checks between waves
-- [ ] Agent health dashboard — connection uptime, heartbeat latency, command success rate per agent
-- [ ] Auto-discovery of new servers on the local network (mDNS/broadcast scan)
-- [ ] Agent registration approval workflow (admin must approve before agent joins fleet)
-- [ ] Bulk agent operations — restart, upgrade, rotate keys across selected servers
-- [ ] Agent changelog and release notes visible in UI
-- [ ] Offline agent command queue — persist commands and deliver when agent reconnects
-- [ ] Command retry with configurable backoff for failed/timed-out operations
-- [ ] Agent connection diagnostics — test connectivity, latency, firewall check from panel
+- [x] Agent version tracking and compatibility matrix (panel version ↔ agent version)
+- [x] Push agent upgrades from the panel (single server or fleet-wide rollout)
+- [x] Staged rollout support — upgrade agents in batches with health checks between waves
+- [x] Agent health dashboard — connection uptime, heartbeat latency, command success rate per agent
+- [x] Auto-discovery of new servers on the local network (mDNS/broadcast scan)
+- [x] Agent registration approval workflow (admin must approve before agent joins fleet)
+- [x] Bulk agent operations — restart, upgrade, rotate keys across selected servers
+- [x] Agent changelog and release notes visible in UI
+- [x] Offline agent command queue — persist commands and deliver when agent reconnects
+- [x] Command retry with configurable backoff for failed/timed-out operations
+- [x] Agent connection diagnostics — test connectivity, latency, firewall check from panel
 
 ---
 
-## Phase 27: Cross-Server Monitoring Dashboard (Planned)
+## Phase 27: Cross-Server Monitoring Dashboard (Completed)
 
 **Priority: High**
 
 Fleet-wide visibility — see everything at a glance and catch problems early.
 
-- [ ] Fleet overview dashboard — heatmap of all servers by CPU/memory/disk usage
-- [ ] Server comparison charts — overlay metrics from multiple servers on one graph
-- [ ] Per-server alert thresholds (CPU > 80% for 5 min → warning, > 95% → critical)
-- [ ] Anomaly detection — automatic baseline learning, alert on deviations
-- [ ] Custom metric dashboards — drag-and-drop widgets, save layouts per user
-- [ ] Metric correlation view — spot relationships between metrics across servers
-- [ ] Capacity forecasting — trend-based predictions (disk full in X days, memory growth rate)
-- [ ] Metrics export — Prometheus endpoint (`/metrics`), CSV download, JSON API
-- [ ] Grafana integration guide and pre-built dashboard templates
-- [ ] Fleet-wide search — find which server is running a specific container, service, or port
+- [x] Fleet overview dashboard — heatmap of all servers by CPU/memory/disk usage
+- [x] Server comparison charts — overlay metrics from multiple servers on one graph
+- [x] Per-server alert thresholds (CPU > 80% for 5 min → warning, > 95% → critical)
+- [x] Anomaly detection — automatic baseline learning, alert on deviations
+- [x] Custom metric dashboards — drag-and-drop widgets, save layouts per user
+- [x] Metric correlation view — spot relationships between metrics across servers
+- [x] Capacity forecasting — trend-based predictions (disk full in X days, memory growth rate)
+- [x] Metrics export — Prometheus endpoint (`/metrics`), CSV download, JSON API
+- [x] Grafana integration guide and pre-built dashboard templates
+- [x] Fleet-wide search — find which server is running a specific container, service, or port
 
 ---
 
@@ -585,9 +585,9 @@ Spin up and manage cloud servers directly from the panel.
 | v1.2.0 | Backups, Advanced SSL, Advanced Security | Completed |
 | v1.3.0 | Email server, API enhancements | Completed |
 | v1.4.0 | Team & permissions, SSO & OAuth login | Completed |
-| v1.5.0 | New UI, Visual Designer, Services Page | Current |
-| v1.6.0 | Workflow triggers & completion, fleet management | Planned |
-| v1.7.0 | Cross-server monitoring, agent plugin system | Planned |
+| v1.5.0 | New UI, Visual Designer, Services Page | Completed |
+| v1.6.0 | Workflow triggers & completion, fleet management | Current |
+| v1.7.0 | Cross-server monitoring, agent plugin system | In Progress |
 | v1.8.0 | Server templates, multi-tenancy | Planned |
 | v1.9.0 | Advanced SSL, DNS management, Nginx config | Planned |
 | v2.0.0 | Status pages, server provisioning, performance | Planned |

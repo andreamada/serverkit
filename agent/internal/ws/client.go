@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -108,8 +109,8 @@ func (c *Client) Connect(ctx context.Context) error {
 		HandshakeTimeout: 10 * time.Second,
 	}
 
-	// Allow insecure for development
-	if c.cfg.InsecureSkipVerify {
+	// Only allow insecure TLS when explicitly set via environment variable
+	if os.Getenv("SERVERKIT_INSECURE_TLS") == "true" {
 		dialer.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	}
 

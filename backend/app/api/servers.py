@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 from flask import Blueprint, request, jsonify, Response, current_app, redirect
 from flask_jwt_extended import jwt_required, get_jwt_identity
 
-from app import db
+from app import db, limiter
 from app.models import User
 from app.models.server import Server, ServerGroup, ServerMetrics, ServerCommand, AgentSession, AgentVersion, AgentRollout
 from app.services.agent_registry import agent_registry
@@ -320,6 +320,7 @@ def regenerate_token(server_id):
 
 
 @servers_bp.route('/register', methods=['POST'])
+@limiter.limit("5 per minute")
 def register_agent():
     """
     Agent registration endpoint.
@@ -388,6 +389,9 @@ def register_agent():
     ws_scheme = 'wss' if request.is_secure else 'ws'
     ws_url = f"{ws_scheme}://{request.host}/agent"
 
+    # Security note: api_secret is returned once during registration so the agent
+    # can store it. The server-side copy is stored encrypted. The registration token
+    # is already cleared above (single-use), preventing re-registration.
     return jsonify({
         'agent_id': server.agent_id,
         'name': server.name,
