@@ -22,6 +22,7 @@ from app.models.api_usage import ApiUsageLog, ApiUsageSummary
 from app.models.event_subscription import EventSubscription, EventDelivery
 from app.models.invitation import Invitation
 from app.models.metric_alert import ServerAlertThreshold, MetricAlert
+from app.models.agent_plugin import AgentPlugin, AgentPluginInstall
 
 __all__ = [
     'User', 'Application', 'Domain', 'EnvironmentVariable', 'EnvironmentVariableHistory',
@@ -33,5 +34,6 @@ __all__ = [
     'EmailDomain', 'EmailAccount', 'EmailAlias', 'EmailForwardingRule', 'DNSProviderConfig',
     'OAuthIdentity', 'ApiKey', 'ApiUsageLog', 'ApiUsageSummary',
     'EventSubscription', 'EventDelivery', 'Invitation',
-    'ServerAlertThreshold', 'MetricAlert'
+    'ServerAlertThreshold', 'MetricAlert',
+    'AgentPlugin', 'AgentPluginInstall'
 ]

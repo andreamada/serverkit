@@ -42,6 +42,7 @@ import SSLCertificates from './pages/SSLCertificates';
 import Email from './pages/Email';
 import SSOCallback from './pages/SSOCallback';
 import DatabaseMigration from './pages/DatabaseMigration';
+import AgentPlugins from './pages/AgentPlugins';
 
 // Page title mapping
 const PAGE_TITLES = {
@@ -74,6 +75,7 @@ const PAGE_TITLES = {
     '/migrate': 'Database Migration',
     '/fleet': 'Agent Fleet',
     '/fleet-monitor': 'Fleet Monitor',
+    '/agent-plugins': 'Agent Plugins',
 };
 
 function PageTitleUpdater() {
@@ -210,6 +212,7 @@ function AppRoutes() {
                 <Route path="servers/:id/:tab" element={<ServerDetail />} />
                 <Route path="fleet" element={<AgentFleet />} />
                 <Route path="fleet-monitor" element={<FleetMonitor />} />
+                <Route path="agent-plugins" element={<AgentPlugins />} />
                 <Route path="downloads" element={<Downloads />} />
                 <Route path="firewall" element={<Navigate to="/security/firewall" replace />} />
                 <Route path="git" element={<Git />} />

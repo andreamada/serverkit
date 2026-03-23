@@ -391,25 +391,25 @@ Fleet-wide visibility — see everything at a glance and catch problems early.
 
 ---
 
-## Phase 28: Agent Plugin System (Planned)
+## Phase 28: Agent Plugin System (Completed)
 
 **Priority: High**
 
 Make the agent extensible — let users add custom capabilities without modifying agent core. This is the foundation for future integrations (Android device farms, IoT fleets, custom hardware monitoring, etc.).
 
 ### Plugin Architecture
-- [ ] Plugin specification — standard interface (init, healthcheck, metrics, commands)
-- [ ] Plugin manifest format (YAML/JSON) — name, version, dependencies, capabilities, permissions
-- [ ] Plugin lifecycle management — install, enable, disable, uninstall, upgrade
-- [ ] Plugin isolation — each plugin runs in its own process/sandbox with resource limits
-- [ ] Plugin communication — standardized IPC between plugin and agent core
+- [x] Plugin specification — standard interface (init, healthcheck, metrics, commands)
+- [x] Plugin manifest format (YAML/JSON) — name, version, dependencies, capabilities, permissions
+- [x] Plugin lifecycle management — install, enable, disable, uninstall, upgrade
+- [x] Plugin isolation — each plugin runs in its own process/sandbox with resource limits
+- [x] Plugin communication — standardized IPC between plugin and agent core
 
 ### Plugin Capabilities
-- [ ] Custom metrics reporters — plugins can push arbitrary metrics to the panel
-- [ ] Custom health checks — plugins define checks that feed into the status system
-- [ ] Custom commands — plugins register new command types the panel can invoke
-- [ ] Scheduled tasks — plugins can register periodic jobs (cron-like)
-- [ ] Event hooks — plugins can react to agent events (connect, disconnect, command, alert)
+- [x] Custom metrics reporters — plugins can push arbitrary metrics to the panel
+- [x] Custom health checks — plugins define checks that feed into the status system
+- [x] Custom commands — plugins register new command types the panel can invoke
+- [x] Scheduled tasks — plugins can register periodic jobs (cron-like)
+- [x] Event hooks — plugins can react to agent events (connect, disconnect, command, alert)
 
 ---
 

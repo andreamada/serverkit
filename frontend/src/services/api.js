@@ -3372,6 +3372,71 @@ class ApiService {
         const query = searchParams.toString();
         return this.request(`/admin/activity/feed${query ? '?' + query : ''}`);
     }
+    // ========================================
+    // Agent Plugins endpoints
+    // ========================================
+    async getAgentPlugins(status) {
+        const query = status ? `?status=${status}` : '';
+        return this.request(`/agent-plugins/${query}`);
+    }
+
+    async getAgentPlugin(id) {
+        return this.request(`/agent-plugins/${id}`);
+    }
+
+    async createAgentPlugin(data) {
+        return this.request('/agent-plugins/', { method: 'POST', body: data });
+    }
+
+    async updateAgentPlugin(id, data) {
+        return this.request(`/agent-plugins/${id}`, { method: 'PUT', body: data });
+    }
+
+    async deleteAgentPlugin(id) {
+        return this.request(`/agent-plugins/${id}`, { method: 'DELETE' });
+    }
+
+    async installAgentPlugin(pluginId, serverId, config) {
+        return this.request(`/agent-plugins/${pluginId}/install`, {
+            method: 'POST', body: { server_id: serverId, config }
+        });
+    }
+
+    async bulkInstallAgentPlugin(pluginId, serverIds, config) {
+        return this.request(`/agent-plugins/${pluginId}/bulk-install`, {
+            method: 'POST', body: { server_ids: serverIds, config }
+        });
+    }
+
+    async getPluginInstallations(pluginId) {
+        return this.request(`/agent-plugins/${pluginId}/installations`);
+    }
+
+    async getServerPlugins(serverId) {
+        return this.request(`/agent-plugins/server/${serverId}`);
+    }
+
+    async enablePluginInstall(installId) {
+        return this.request(`/agent-plugins/installs/${installId}/enable`, { method: 'POST' });
+    }
+
+    async disablePluginInstall(installId) {
+        return this.request(`/agent-plugins/installs/${installId}/disable`, { method: 'POST' });
+    }
+
+    async uninstallPlugin(installId) {
+        return this.request(`/agent-plugins/installs/${installId}`, { method: 'DELETE' });
+    }
+
+    async updatePluginInstallConfig(installId, config) {
+        return this.request(`/agent-plugins/installs/${installId}/config`, {
+            method: 'PUT', body: { config }
+        });
+    }
+
+    async getPluginSpec() {
+        return this.request('/agent-plugins/spec');
+    }
 }
 
 export const api = new ApiService();

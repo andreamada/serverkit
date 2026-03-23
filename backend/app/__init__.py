@@ -226,6 +226,10 @@ def create_app(config_name=None):
     from app.api.fleet_monitor import fleet_monitor_bp
     app.register_blueprint(fleet_monitor_bp, url_prefix='/api/v1/fleet-monitor')
 
+    # Register blueprints - Agent Plugins
+    from app.api.agent_plugins import agent_plugins_bp
+    app.register_blueprint(agent_plugins_bp, url_prefix='/api/v1/agent-plugins')
+
     # Handle database migrations (Alembic)
     with app.app_context():
         from app.services.migration_service import MigrationService
