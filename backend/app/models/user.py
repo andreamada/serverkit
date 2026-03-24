@@ -197,7 +197,8 @@ class User(db.Model):
             'created_at': self.created_at.isoformat(),
             'updated_at': self.updated_at.isoformat(),
             'last_login_at': self.last_login_at.isoformat() if self.last_login_at else None,
-            'created_by': self.created_by
+            'created_by': self.created_by,
+            'is_admin': self.is_admin
         }
 
     def get_backup_codes(self):

@@ -123,22 +123,22 @@ const ServerTemplates = () => {
 
     return (
         <div className="server-templates-page">
-            <header className="top-bar">
-                <div className="top-bar__title">
+            <div className="page-header">
+                <div className="page-header-content">
                     <h1>Server Templates</h1>
-                    <span className="top-bar__subtitle">
+                    <p className="page-description">
                         {templates.length} template{templates.length !== 1 ? 's' : ''}
                         {compliance && ` \u2022 ${compliance.compliance_pct}% fleet compliance`}
-                    </span>
+                    </p>
                 </div>
-                <div className="top-bar__actions">
+                <div className="page-header-actions">
                     {user?.is_admin && (
-                        <button className="btn btn--primary" onClick={() => setShowCreateModal(true)}>
+                        <button className="btn btn-primary" onClick={() => setShowCreateModal(true)}>
                             Create Template
                         </button>
                     )}
                 </div>
-            </header>
+            </div>
 
             {compliance && (
                 <div className="compliance-bar">
@@ -187,11 +187,11 @@ const ServerTemplates = () => {
                                 {tmpl.firewall_rules?.length > 0 && <span>{tmpl.firewall_rules.length} firewall rules</span>}
                             </div>
                             <div className="template-card__actions" onClick={e => e.stopPropagation()}>
-                                <button className="btn btn--sm btn--primary" onClick={() => { setSelectedTemplate(tmpl); setShowAssignModal(true); }}>
+                                <button className="btn btn-sm btn-primary" onClick={() => { setSelectedTemplate(tmpl); setShowAssignModal(true); }}>
                                     Assign
                                 </button>
                                 {user?.is_admin && (
-                                    <button className="btn btn--sm btn--danger" onClick={() => setDeleteConfirm(tmpl)}>Delete</button>
+                                    <button className="btn btn-sm btn-danger" onClick={() => setDeleteConfirm(tmpl)}>Delete</button>
                                 )}
                             </div>
                         </div>
@@ -219,7 +219,7 @@ const ServerTemplates = () => {
                                 {tmpl.firewall_rules?.length > 0 && <span>{tmpl.firewall_rules.length} firewall rules</span>}
                             </div>
                             <div className="template-card__actions">
-                                <button className="btn btn--sm btn--primary" onClick={() => handleCreateFromLibrary(key)}>
+                                <button className="btn btn-sm btn-primary" onClick={() => handleCreateFromLibrary(key)}>
                                     Use Template
                                 </button>
                             </div>
@@ -232,11 +232,11 @@ const ServerTemplates = () => {
             {showCreateModal && (
                 <div className="modal-overlay" onClick={() => setShowCreateModal(false)}>
                     <div className="modal" onClick={e => e.stopPropagation()}>
-                        <div className="modal__header">
+                        <div className="modal-header">
                             <h2>Create Template</h2>
-                            <button className="modal__close" onClick={() => setShowCreateModal(false)}>&times;</button>
+                            <button className="modal-close" onClick={() => setShowCreateModal(false)}>&times;</button>
                         </div>
-                        <div className="modal__body">
+                        <div className="modal-body">
                             <div className="form-group">
                                 <label>Name</label>
                                 <input className="form-input" value={form.name} onChange={e => setForm({...form, name: e.target.value})} />
@@ -262,9 +262,9 @@ const ServerTemplates = () => {
                                 </label>
                             </div>
                         </div>
-                        <div className="modal__footer">
+                        <div className="modal-footer">
                             <button className="btn" onClick={() => setShowCreateModal(false)}>Cancel</button>
-                            <button className="btn btn--primary" onClick={handleCreate} disabled={!form.name}>Create</button>
+                            <button className="btn btn-primary" onClick={handleCreate} disabled={!form.name}>Create</button>
                         </div>
                     </div>
                 </div>
@@ -274,11 +274,11 @@ const ServerTemplates = () => {
             {showAssignModal && selectedTemplate && (
                 <div className="modal-overlay" onClick={() => setShowAssignModal(false)}>
                     <div className="modal" onClick={e => e.stopPropagation()}>
-                        <div className="modal__header">
+                        <div className="modal-header">
                             <h2>Assign {selectedTemplate.name}</h2>
-                            <button className="modal__close" onClick={() => setShowAssignModal(false)}>&times;</button>
+                            <button className="modal-close" onClick={() => setShowAssignModal(false)}>&times;</button>
                         </div>
-                        <div className="modal__body">
+                        <div className="modal-body">
                             <p>Select a server to apply this template:</p>
                             <div className="server-select-list">
                                 {servers.map(server => (

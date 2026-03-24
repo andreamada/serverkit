@@ -25,6 +25,34 @@ const DNSZones = () => {
 
     const RECORD_TYPES = ['A', 'AAAA', 'CNAME', 'MX', 'TXT', 'SRV', 'CAA', 'NS'];
 
+    const PROVIDER_CONFIG = {
+        cloudflare: {
+            zoneLabel: 'Cloudflare Zone ID',
+            zonePlaceholder: 'e.g. 023e105f4ecef8ad9ca31a8372d0c353',
+            tokenLabel: 'API Token',
+            tokenPlaceholder: 'Cloudflare API token (Edit zone permissions)',
+            helpText: 'Find your Zone ID in the Cloudflare dashboard under Overview → API.',
+        },
+        route53: {
+            zoneLabel: 'Hosted Zone ID',
+            zonePlaceholder: 'e.g. Z3M3LMPEXAMPLE',
+            tokenLabel: 'AWS Access Key',
+            tokenPlaceholder: 'AKIA... (needs Route 53 permissions)',
+            helpText: 'Use an IAM user with AmazonRoute53FullAccess policy.',
+            extraFields: [
+                { key: 'aws_secret_key', label: 'AWS Secret Key', placeholder: 'Secret access key', type: 'password' },
+                { key: 'aws_region', label: 'AWS Region', placeholder: 'us-east-1', type: 'text' },
+            ],
+        },
+        digitalocean: {
+            zoneLabel: 'Domain Name',
+            zonePlaceholder: 'e.g. example.com (must exist in your DO account)',
+            tokenLabel: 'Personal Access Token',
+            tokenPlaceholder: 'DigitalOcean personal access token',
+            helpText: 'Generate a token at API → Tokens with read+write scope.',
+        },
+    };
+
     const loadZones = useCallback(async () => {
         try {
             const data = await api.getDNSZones();
@@ -135,17 +163,17 @@ const DNSZones = () => {
 
     return (
         <div className="dns-zones-page">
-            <header className="top-bar">
-                <div className="top-bar__title">
+            <div className="page-header">
+                <div className="page-header-content">
                     <h1>DNS Zones</h1>
-                    <span className="top-bar__subtitle">{zones.length} zone{zones.length !== 1 ? 's' : ''}</span>
+                    <p className="page-description">{zones.length} zone{zones.length !== 1 ? 's' : ''} configured</p>
                 </div>
-                <div className="top-bar__actions">
+                <div className="page-header-actions">
                     {user?.is_admin && (
-                        <button className="btn btn--primary" onClick={() => setShowCreateZone(true)}>Add Zone</button>
+                        <button className="btn btn-primary" onClick={() => setShowCreateZone(true)}>Add Zone</button>
                     )}
                 </div>
-            </header>
+            </div>
 
             <div className="dns-layout">
                 <div className="dns-zones-list">
@@ -158,9 +186,9 @@ const DNSZones = () => {
                                 <span className="text-muted">{zone.provider} \u2022 {zone.record_count} records</span>
                             </div>
                             <div className="dns-zone-item__actions" onClick={e => e.stopPropagation()}>
-                                <button className="btn btn--sm" onClick={() => handleCheckPropagation(zone.domain)}>Check</button>
+                                <button className="btn btn-sm" onClick={() => handleCheckPropagation(zone.domain)}>Check</button>
                                 {user?.is_admin && (
-                                    <button className="btn btn--sm btn--danger" onClick={() => setDeleteConfirm(zone)}>Delete</button>
+                                    <button className="btn btn-sm btn-danger" onClick={() => setDeleteConfirm(zone)}>Delete</button>
                                 )}
                             </div>
                         </div>
@@ -173,9 +201,9 @@ const DNSZones = () => {
                         <div className="dns-records-panel__header">
                             <h2>{selectedZone.domain}</h2>
                             <div className="dns-records-panel__actions">
-                                <button className="btn btn--sm" onClick={() => handleExport(selectedZone.id)}>Export</button>
+                                <button className="btn btn-sm" onClick={() => handleExport(selectedZone.id)}>Export</button>
                                 {user?.is_admin && (
-                                    <button className="btn btn--sm btn--primary" onClick={() => setShowCreateRecord(true)}>Add Record</button>
+                                    <button className="btn btn-sm btn-primary" onClick={() => setShowCreateRecord(true)}>Add Record</button>
                                 )}
                             </div>
                         </div>
@@ -200,7 +228,7 @@ const DNSZones = () => {
                                         <td>{rec.priority || '-'}</td>
                                         <td>
                                             {user?.is_admin && (
-                                                <button className="btn btn--sm btn--danger" onClick={() => handleDeleteRecord(rec.id)}>Delete</button>
+                                                <button className="btn btn-sm btn-danger" onClick={() => handleDeleteRecord(rec.id)}>Delete</button>
                                             )}
                                         </td>
                                     </tr>
@@ -217,11 +245,11 @@ const DNSZones = () => {
             {showCreateZone && (
                 <div className="modal-overlay" onClick={() => setShowCreateZone(false)}>
                     <div className="modal" onClick={e => e.stopPropagation()}>
-                        <div className="modal__header">
+                        <div className="modal-header">
                             <h2>Add DNS Zone</h2>
-                            <button className="modal__close" onClick={() => setShowCreateZone(false)}>&times;</button>
+                            <button className="modal-close" onClick={() => setShowCreateZone(false)}>&times;</button>
                         </div>
-                        <div className="modal__body">
+                        <div className="modal-body">
                             <div className="form-group">
                                 <label>Domain</label>
                                 <input className="form-input" value={zoneForm.domain} onChange={e => setZoneForm({...zoneForm, domain: e.target.value})} placeholder="example.com" />
@@ -231,26 +259,38 @@ const DNSZones = () => {
                                 <select className="form-select" value={zoneForm.provider} onChange={e => setZoneForm({...zoneForm, provider: e.target.value})}>
                                     <option value="manual">Manual</option>
                                     <option value="cloudflare">Cloudflare</option>
-                                    <option value="route53">Route53</option>
+                                    <option value="route53">Route 53 (AWS)</option>
                                     <option value="digitalocean">DigitalOcean</option>
                                 </select>
                             </div>
-                            {zoneForm.provider !== 'manual' && (
-                                <>
-                                    <div className="form-group">
-                                        <label>Zone ID</label>
-                                        <input className="form-input" value={zoneForm.provider_zone_id} onChange={e => setZoneForm({...zoneForm, provider_zone_id: e.target.value})} placeholder={zoneForm.provider === 'cloudflare' ? 'Cloudflare Zone ID' : 'Provider Zone ID'} />
-                                    </div>
-                                    <div className="form-group">
-                                        <label>API Token</label>
-                                        <input className="form-input" type="password" value={zoneForm.api_token} onChange={e => setZoneForm({...zoneForm, api_token: e.target.value})} placeholder={`${zoneForm.provider.charAt(0).toUpperCase() + zoneForm.provider.slice(1)} API token`} />
-                                    </div>
-                                </>
-                            )}
+                            {zoneForm.provider !== 'manual' && (() => {
+                                const cfg = PROVIDER_CONFIG[zoneForm.provider];
+                                return (
+                                    <>
+                                        {cfg.helpText && (
+                                            <p className="text-muted text-sm">{cfg.helpText}</p>
+                                        )}
+                                        <div className="form-group">
+                                            <label>{cfg.zoneLabel}</label>
+                                            <input className="form-input" value={zoneForm.provider_zone_id} onChange={e => setZoneForm({...zoneForm, provider_zone_id: e.target.value})} placeholder={cfg.zonePlaceholder} />
+                                        </div>
+                                        <div className="form-group">
+                                            <label>{cfg.tokenLabel}</label>
+                                            <input className="form-input" type="password" value={zoneForm.api_token} onChange={e => setZoneForm({...zoneForm, api_token: e.target.value})} placeholder={cfg.tokenPlaceholder} />
+                                        </div>
+                                        {cfg.extraFields?.map(field => (
+                                            <div className="form-group" key={field.key}>
+                                                <label>{field.label}</label>
+                                                <input className="form-input" type={field.type} value={zoneForm[field.key] || ''} onChange={e => setZoneForm({...zoneForm, [field.key]: e.target.value})} placeholder={field.placeholder} />
+                                            </div>
+                                        ))}
+                                    </>
+                                );
+                            })()}
                         </div>
-                        <div className="modal__footer">
+                        <div className="modal-footer">
                             <button className="btn" onClick={() => setShowCreateZone(false)}>Cancel</button>
-                            <button className="btn btn--primary" onClick={handleCreateZone} disabled={!zoneForm.domain}>Create</button>
+                            <button className="btn btn-primary" onClick={handleCreateZone} disabled={!zoneForm.domain}>Create</button>
                         </div>
                     </div>
                 </div>
@@ -259,11 +299,11 @@ const DNSZones = () => {
             {showCreateRecord && (
                 <div className="modal-overlay" onClick={() => setShowCreateRecord(false)}>
                     <div className="modal" onClick={e => e.stopPropagation()}>
-                        <div className="modal__header">
+                        <div className="modal-header">
                             <h2>Add DNS Record</h2>
-                            <button className="modal__close" onClick={() => setShowCreateRecord(false)}>&times;</button>
+                            <button className="modal-close" onClick={() => setShowCreateRecord(false)}>&times;</button>
                         </div>
-                        <div className="modal__body">
+                        <div className="modal-body">
                             <div className="form-group">
                                 <label>Type</label>
                                 <select className="form-select" value={recordForm.record_type} onChange={e => setRecordForm({...recordForm, record_type: e.target.value})}>
@@ -291,9 +331,9 @@ const DNSZones = () => {
                                 )}
                             </div>
                         </div>
-                        <div className="modal__footer">
+                        <div className="modal-footer">
                             <button className="btn" onClick={() => setShowCreateRecord(false)}>Cancel</button>
-                            <button className="btn btn--primary" onClick={handleCreateRecord} disabled={!recordForm.content}>Create</button>
+                            <button className="btn btn-primary" onClick={handleCreateRecord} disabled={!recordForm.content}>Create</button>
                         </div>
                     </div>
                 </div>
@@ -302,11 +342,11 @@ const DNSZones = () => {
             {showPropagation && (
                 <div className="modal-overlay" onClick={() => setShowPropagation(null)}>
                     <div className="modal" onClick={e => e.stopPropagation()}>
-                        <div className="modal__header">
+                        <div className="modal-header">
                             <h2>DNS Propagation: {showPropagation}</h2>
-                            <button className="modal__close" onClick={() => setShowPropagation(null)}>&times;</button>
+                            <button className="modal-close" onClick={() => setShowPropagation(null)}>&times;</button>
                         </div>
-                        <div className="modal__body">
+                        <div className="modal-body">
                             {propagationResults.map((r, i) => (
                                 <div key={i} className="propagation-row">
                                     <span className={`status-dot status-dot--${r.propagated ? 'success' : 'danger'}`} />

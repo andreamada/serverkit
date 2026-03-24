@@ -101,17 +101,17 @@ const Workspaces = () => {
 
     return (
         <div className="workspaces-page">
-            <header className="top-bar">
-                <div className="top-bar__title">
+            <div className="page-header">
+                <div className="page-header-content">
                     <h1>Workspaces</h1>
-                    <span className="top-bar__subtitle">{workspaces.length} workspace{workspaces.length !== 1 ? 's' : ''}</span>
+                    <p className="page-description">{workspaces.length} workspace{workspaces.length !== 1 ? 's' : ''}</p>
                 </div>
-                <div className="top-bar__actions">
-                    <button className="btn btn--primary" onClick={() => setShowCreateModal(true)}>
+                <div className="page-header-actions">
+                    <button className="btn btn-primary" onClick={() => setShowCreateModal(true)}>
                         Create Workspace
                     </button>
                 </div>
-            </header>
+            </div>
 
             <div className="workspaces-grid">
                 {workspaces.map(ws => (
@@ -139,12 +139,12 @@ const Workspaces = () => {
                             </div>
                         )}
                         <div className="workspace-card__actions">
-                            <button className="btn btn--sm" onClick={() => loadMembers(ws.id)}>Members</button>
+                            <button className="btn btn-sm" onClick={() => loadMembers(ws.id)}>Members</button>
                             {ws.status === 'active' && (
-                                <button className="btn btn--sm btn--warning" onClick={() => handleArchive(ws.id)}>Archive</button>
+                                <button className="btn btn-sm btn-warning" onClick={() => handleArchive(ws.id)}>Archive</button>
                             )}
                             {user?.is_admin && (
-                                <button className="btn btn--sm btn--danger" onClick={() => setDeleteConfirm(ws)}>Delete</button>
+                                <button className="btn btn-sm btn-danger" onClick={() => setDeleteConfirm(ws)}>Delete</button>
                             )}
                         </div>
                     </div>
@@ -159,11 +159,11 @@ const Workspaces = () => {
             {showCreateModal && (
                 <div className="modal-overlay" onClick={() => setShowCreateModal(false)}>
                     <div className="modal" onClick={e => e.stopPropagation()}>
-                        <div className="modal__header">
+                        <div className="modal-header">
                             <h2>Create Workspace</h2>
-                            <button className="modal__close" onClick={() => setShowCreateModal(false)}>&times;</button>
+                            <button className="modal-close" onClick={() => setShowCreateModal(false)}>&times;</button>
                         </div>
-                        <div className="modal__body">
+                        <div className="modal-body">
                             <div className="form-group">
                                 <label>Name</label>
                                 <input className="form-input" value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="My Team" />
@@ -183,9 +183,9 @@ const Workspaces = () => {
                                 </div>
                             </div>
                         </div>
-                        <div className="modal__footer">
+                        <div className="modal-footer">
                             <button className="btn" onClick={() => setShowCreateModal(false)}>Cancel</button>
-                            <button className="btn btn--primary" onClick={handleCreate} disabled={!form.name}>Create</button>
+                            <button className="btn btn-primary" onClick={handleCreate} disabled={!form.name}>Create</button>
                         </div>
                     </div>
                 </div>
@@ -194,11 +194,11 @@ const Workspaces = () => {
             {showMembersModal && (
                 <div className="modal-overlay" onClick={() => setShowMembersModal(null)}>
                     <div className="modal" onClick={e => e.stopPropagation()}>
-                        <div className="modal__header">
+                        <div className="modal-header">
                             <h2>Workspace Members</h2>
-                            <button className="modal__close" onClick={() => setShowMembersModal(null)}>&times;</button>
+                            <button className="modal-close" onClick={() => setShowMembersModal(null)}>&times;</button>
                         </div>
-                        <div className="modal__body">
+                        <div className="modal-body">
                             <div className="members-list">
                                 {members.map(m => (
                                     <div key={m.id} className="member-row">
@@ -207,7 +207,7 @@ const Workspaces = () => {
                                             <span className="badge badge--outline ml-2">{m.role}</span>
                                         </div>
                                         {m.role !== 'owner' && (
-                                            <button className="btn btn--sm btn--danger" onClick={() => handleRemoveMember(m.id)}>Remove</button>
+                                            <button className="btn btn-sm btn-danger" onClick={() => handleRemoveMember(m.id)}>Remove</button>
                                         )}
                                     </div>
                                 ))}

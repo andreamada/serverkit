@@ -115,17 +115,17 @@ const StatusPages = () => {
 
     return (
         <div className="status-pages-page">
-            <header className="top-bar">
-                <div className="top-bar__title">
+            <div className="page-header">
+                <div className="page-header-content">
                     <h1>Status Pages</h1>
-                    <span className="top-bar__subtitle">{pages.length} page{pages.length !== 1 ? 's' : ''}</span>
+                    <p className="page-description">{pages.length} page{pages.length !== 1 ? 's' : ''}</p>
                 </div>
-                <div className="top-bar__actions">
+                <div className="page-header-actions">
                     {user?.is_admin && (
-                        <button className="btn btn--primary" onClick={() => setShowCreatePage(true)}>Create Page</button>
+                        <button className="btn btn-primary" onClick={() => setShowCreatePage(true)}>Create Page</button>
                     )}
                 </div>
-            </header>
+            </div>
 
             <div className="status-layout">
                 <div className="status-pages-list">
@@ -155,7 +155,7 @@ const StatusPages = () => {
                             <>
                                 <div className="status-actions-bar">
                                     {user?.is_admin && (
-                                        <button className="btn btn--sm btn--primary" onClick={() => setShowCreateComponent(true)}>Add Component</button>
+                                        <button className="btn btn-sm btn-primary" onClick={() => setShowCreateComponent(true)}>Add Component</button>
                                     )}
                                 </div>
                                 <div className="components-list">
@@ -173,7 +173,7 @@ const StatusPages = () => {
                                                 {comp.last_response_time && <span>{comp.last_response_time}ms</span>}
                                             </div>
                                             <div className="component-row__actions">
-                                                <button className="btn btn--sm" onClick={() => handleRunCheck(comp.id)}>Check Now</button>
+                                                <button className="btn btn-sm" onClick={() => handleRunCheck(comp.id)}>Check Now</button>
                                             </div>
                                         </div>
                                     ))}
@@ -186,7 +186,7 @@ const StatusPages = () => {
                             <>
                                 <div className="status-actions-bar">
                                     {user?.is_admin && (
-                                        <button className="btn btn--sm btn--primary" onClick={() => setShowCreateIncident(true)}>Create Incident</button>
+                                        <button className="btn btn-sm btn-primary" onClick={() => setShowCreateIncident(true)}>Create Incident</button>
                                     )}
                                 </div>
                                 <div className="incidents-list">
@@ -199,7 +199,7 @@ const StatusPages = () => {
                                             <span className="text-muted">Impact: {inc.impact}</span>
                                             {inc.body && <p>{inc.body}</p>}
                                             {inc.status !== 'resolved' && user?.is_admin && (
-                                                <button className="btn btn--sm btn--success" onClick={() => handleResolveIncident(inc.id)}>Resolve</button>
+                                                <button className="btn btn-sm btn-success" onClick={() => handleResolveIncident(inc.id)}>Resolve</button>
                                             )}
                                         </div>
                                     ))}
@@ -214,13 +214,13 @@ const StatusPages = () => {
             {showCreatePage && (
                 <div className="modal-overlay" onClick={() => setShowCreatePage(false)}>
                     <div className="modal" onClick={e => e.stopPropagation()}>
-                        <div className="modal__header"><h2>Create Status Page</h2><button className="modal__close" onClick={() => setShowCreatePage(false)}>&times;</button></div>
-                        <div className="modal__body">
+                        <div className="modal-header"><h2>Create Status Page</h2><button className="modal-close" onClick={() => setShowCreatePage(false)}>&times;</button></div>
+                        <div className="modal-body">
                             <div className="form-group"><label>Name</label><input className="form-input" value={pageForm.name} onChange={e => setPageForm({...pageForm, name: e.target.value})} /></div>
                             <div className="form-group"><label>Slug (URL path)</label><input className="form-input" value={pageForm.slug} onChange={e => setPageForm({...pageForm, slug: e.target.value})} placeholder="my-services" /></div>
                             <div className="form-group"><label>Description</label><textarea className="form-input" value={pageForm.description} onChange={e => setPageForm({...pageForm, description: e.target.value})} rows={2} /></div>
                         </div>
-                        <div className="modal__footer"><button className="btn" onClick={() => setShowCreatePage(false)}>Cancel</button><button className="btn btn--primary" onClick={handleCreatePage} disabled={!pageForm.name || !pageForm.slug}>Create</button></div>
+                        <div className="modal-footer"><button className="btn" onClick={() => setShowCreatePage(false)}>Cancel</button><button className="btn btn-primary" onClick={handleCreatePage} disabled={!pageForm.name || !pageForm.slug}>Create</button></div>
                     </div>
                 </div>
             )}
@@ -228,15 +228,15 @@ const StatusPages = () => {
             {showCreateComponent && (
                 <div className="modal-overlay" onClick={() => setShowCreateComponent(false)}>
                     <div className="modal" onClick={e => e.stopPropagation()}>
-                        <div className="modal__header"><h2>Add Component</h2><button className="modal__close" onClick={() => setShowCreateComponent(false)}>&times;</button></div>
-                        <div className="modal__body">
+                        <div className="modal-header"><h2>Add Component</h2><button className="modal-close" onClick={() => setShowCreateComponent(false)}>&times;</button></div>
+                        <div className="modal-body">
                             <div className="form-group"><label>Name</label><input className="form-input" value={compForm.name} onChange={e => setCompForm({...compForm, name: e.target.value})} /></div>
                             <div className="form-group"><label>Group</label><input className="form-input" value={compForm.group} onChange={e => setCompForm({...compForm, group: e.target.value})} /></div>
                             <div className="form-group"><label>Check Type</label><select className="form-select" value={compForm.check_type} onChange={e => setCompForm({...compForm, check_type: e.target.value})}><option value="http">HTTP</option><option value="tcp">TCP</option><option value="dns">DNS</option><option value="ping">Ping</option></select></div>
                             <div className="form-group"><label>Check Target</label><input className="form-input" value={compForm.check_target} onChange={e => setCompForm({...compForm, check_target: e.target.value})} placeholder="https://example.com or host:port" /></div>
                             <div className="form-group"><label>Check Interval (seconds)</label><input className="form-input" type="number" value={compForm.check_interval} onChange={e => setCompForm({...compForm, check_interval: parseInt(e.target.value) || 60})} /></div>
                         </div>
-                        <div className="modal__footer"><button className="btn" onClick={() => setShowCreateComponent(false)}>Cancel</button><button className="btn btn--primary" onClick={handleCreateComponent} disabled={!compForm.name}>Add</button></div>
+                        <div className="modal-footer"><button className="btn" onClick={() => setShowCreateComponent(false)}>Cancel</button><button className="btn btn-primary" onClick={handleCreateComponent} disabled={!compForm.name}>Add</button></div>
                     </div>
                 </div>
             )}
@@ -244,13 +244,13 @@ const StatusPages = () => {
             {showCreateIncident && (
                 <div className="modal-overlay" onClick={() => setShowCreateIncident(false)}>
                     <div className="modal" onClick={e => e.stopPropagation()}>
-                        <div className="modal__header"><h2>Create Incident</h2><button className="modal__close" onClick={() => setShowCreateIncident(false)}>&times;</button></div>
-                        <div className="modal__body">
+                        <div className="modal-header"><h2>Create Incident</h2><button className="modal-close" onClick={() => setShowCreateIncident(false)}>&times;</button></div>
+                        <div className="modal-body">
                             <div className="form-group"><label>Title</label><input className="form-input" value={incidentForm.title} onChange={e => setIncidentForm({...incidentForm, title: e.target.value})} /></div>
                             <div className="form-group"><label>Impact</label><select className="form-select" value={incidentForm.impact} onChange={e => setIncidentForm({...incidentForm, impact: e.target.value})}><option value="none">None</option><option value="minor">Minor</option><option value="major">Major</option><option value="critical">Critical</option></select></div>
                             <div className="form-group"><label>Description</label><textarea className="form-input" value={incidentForm.body} onChange={e => setIncidentForm({...incidentForm, body: e.target.value})} rows={3} /></div>
                         </div>
-                        <div className="modal__footer"><button className="btn" onClick={() => setShowCreateIncident(false)}>Cancel</button><button className="btn btn--primary" onClick={handleCreateIncident} disabled={!incidentForm.title}>Create</button></div>
+                        <div className="modal-footer"><button className="btn" onClick={() => setShowCreateIncident(false)}>Cancel</button><button className="btn btn-primary" onClick={handleCreateIncident} disabled={!incidentForm.title}>Create</button></div>
                     </div>
                 </div>
             )}

@@ -71,15 +71,15 @@ const Marketplace = () => {
 
     return (
         <div className="marketplace-page">
-            <header className="top-bar">
-                <div className="top-bar__title">
+            <div className="page-header">
+                <div className="page-header-content">
                     <h1>Marketplace</h1>
-                    <span className="top-bar__subtitle">{extensions.length} extensions available</span>
+                    <p className="page-description">{extensions.length} extensions available</p>
                 </div>
-                <div className="top-bar__actions">
+                <div className="page-header-actions">
                     <button className="btn" onClick={() => setShowSubmit(true)}>Submit Extension</button>
                 </div>
-            </header>
+            </div>
 
             <div className="tabs">
                 <button className={`tab ${tab === 'browse' ? 'active' : ''}`} onClick={() => setTab('browse')}>Browse</button>
@@ -117,7 +117,7 @@ const Marketplace = () => {
                                     {installedIds.has(ext.id) ? (
                                         <span className="badge badge--success">Installed</span>
                                     ) : (
-                                        <button className="btn btn--sm btn--primary" onClick={() => handleInstall(ext.id)}>Install</button>
+                                        <button className="btn btn-sm btn-primary" onClick={() => handleInstall(ext.id)}>Install</button>
                                     )}
                                 </div>
                             </div>
@@ -135,7 +135,7 @@ const Marketplace = () => {
                                 <strong>{inst.extension_name}</strong>
                                 <span className="text-muted">v{inst.installed_version}</span>
                             </div>
-                            <button className="btn btn--sm btn--danger" onClick={() => handleUninstall(inst.id)}>Uninstall</button>
+                            <button className="btn btn-sm btn-danger" onClick={() => handleUninstall(inst.id)}>Uninstall</button>
                         </div>
                     ))}
                     {myExtensions.length === 0 && <div className="empty-state"><p>No extensions installed.</p></div>}
@@ -145,15 +145,15 @@ const Marketplace = () => {
             {showSubmit && (
                 <div className="modal-overlay" onClick={() => setShowSubmit(false)}>
                     <div className="modal" onClick={e => e.stopPropagation()}>
-                        <div className="modal__header"><h2>Submit Extension</h2><button className="modal__close" onClick={() => setShowSubmit(false)}>&times;</button></div>
-                        <div className="modal__body">
+                        <div className="modal-header"><h2>Submit Extension</h2><button className="modal-close" onClick={() => setShowSubmit(false)}>&times;</button></div>
+                        <div className="modal-body">
                             <div className="form-group"><label>Name</label><input className="form-input" value={form.name} onChange={e => setForm({...form, name: e.target.value})} /></div>
                             <div className="form-group"><label>Display Name</label><input className="form-input" value={form.display_name} onChange={e => setForm({...form, display_name: e.target.value})} /></div>
                             <div className="form-group"><label>Description</label><textarea className="form-input" value={form.description} onChange={e => setForm({...form, description: e.target.value})} rows={3} /></div>
                             <div className="form-group"><label>Category</label><select className="form-select" value={form.category} onChange={e => setForm({...form, category: e.target.value})}>{categories.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
                             <div className="form-group"><label>Author</label><input className="form-input" value={form.author} onChange={e => setForm({...form, author: e.target.value})} /></div>
                         </div>
-                        <div className="modal__footer"><button className="btn" onClick={() => setShowSubmit(false)}>Cancel</button><button className="btn btn--primary" onClick={handleSubmit} disabled={!form.name}>Submit</button></div>
+                        <div className="modal-footer"><button className="btn" onClick={() => setShowSubmit(false)}>Cancel</button><button className="btn btn-primary" onClick={handleSubmit} disabled={!form.name}>Submit</button></div>
                     </div>
                 </div>
             )}

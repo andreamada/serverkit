@@ -82,23 +82,23 @@ const CloudProvision = () => {
 
     return (
         <div className="cloud-provision-page">
-            <header className="top-bar">
-                <div className="top-bar__title">
+            <div className="page-header">
+                <div className="page-header-content">
                     <h1>Cloud Provisioning</h1>
-                    <span className="top-bar__subtitle">
+                    <p className="page-description">
                         {servers.length} server{servers.length !== 1 ? 's' : ''}
                         {costs && ` \u2022 $${costs.total_monthly}/mo`}
-                    </span>
+                    </p>
                 </div>
-                <div className="top-bar__actions">
+                <div className="page-header-actions">
                     {user?.is_admin && (
                         <>
                             <button className="btn" onClick={() => setShowCreateProvider(true)}>Add Provider</button>
-                            <button className="btn btn--primary" onClick={() => setShowCreateServer(true)}>New Server</button>
+                            <button className="btn btn-primary" onClick={() => setShowCreateServer(true)}>New Server</button>
                         </>
                     )}
                 </div>
-            </header>
+            </div>
 
             <div className="tabs">
                 <button className={`tab ${tab === 'servers' ? 'active' : ''}`} onClick={() => setTab('servers')}>Servers</button>
@@ -126,7 +126,7 @@ const CloudProvision = () => {
                             <div className="cloud-server-card__actions">
                                 {srv.agent_installed && <span className="badge badge--success">Agent Installed</span>}
                                 {user?.is_admin && srv.status === 'active' && (
-                                    <button className="btn btn--sm btn--danger" onClick={() => setDeleteConfirm(srv)}>Destroy</button>
+                                    <button className="btn btn-sm btn-danger" onClick={() => setDeleteConfirm(srv)}>Destroy</button>
                                 )}
                             </div>
                         </div>
@@ -167,13 +167,13 @@ const CloudProvision = () => {
             {showCreateProvider && (
                 <div className="modal-overlay" onClick={() => setShowCreateProvider(false)}>
                     <div className="modal" onClick={e => e.stopPropagation()}>
-                        <div className="modal__header"><h2>Add Cloud Provider</h2><button className="modal__close" onClick={() => setShowCreateProvider(false)}>&times;</button></div>
-                        <div className="modal__body">
+                        <div className="modal-header"><h2>Add Cloud Provider</h2><button className="modal-close" onClick={() => setShowCreateProvider(false)}>&times;</button></div>
+                        <div className="modal-body">
                             <div className="form-group"><label>Provider</label><select className="form-select" value={providerForm.provider_type} onChange={e => setProviderForm({...providerForm, provider_type: e.target.value})}>{Object.entries(providerTypes).map(([k,v]) => <option key={k} value={k}>{v}</option>)}</select></div>
                             <div className="form-group"><label>Name</label><input className="form-input" value={providerForm.name} onChange={e => setProviderForm({...providerForm, name: e.target.value})} /></div>
                             <div className="form-group"><label>API Key</label><input className="form-input" type="password" value={providerForm.api_key} onChange={e => setProviderForm({...providerForm, api_key: e.target.value})} /></div>
                         </div>
-                        <div className="modal__footer"><button className="btn" onClick={() => setShowCreateProvider(false)}>Cancel</button><button className="btn btn--primary" onClick={handleCreateProvider}>Add</button></div>
+                        <div className="modal-footer"><button className="btn" onClick={() => setShowCreateProvider(false)}>Cancel</button><button className="btn btn-primary" onClick={handleCreateProvider}>Add</button></div>
                     </div>
                 </div>
             )}
@@ -181,8 +181,8 @@ const CloudProvision = () => {
             {showCreateServer && (
                 <div className="modal-overlay" onClick={() => setShowCreateServer(false)}>
                     <div className="modal" onClick={e => e.stopPropagation()}>
-                        <div className="modal__header"><h2>New Cloud Server</h2><button className="modal__close" onClick={() => setShowCreateServer(false)}>&times;</button></div>
-                        <div className="modal__body">
+                        <div className="modal-header"><h2>New Cloud Server</h2><button className="modal-close" onClick={() => setShowCreateServer(false)}>&times;</button></div>
+                        <div className="modal-body">
                             <div className="form-group"><label>Provider</label><select className="form-select" value={serverForm.provider_id} onChange={e => { setServerForm({...serverForm, provider_id: parseInt(e.target.value)}); const p = providers.find(x => x.id === parseInt(e.target.value)); if (p) loadProviderOptions(p.provider_type); }}><option value="">Select provider</option>{providers.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></div>
                             <div className="form-group"><label>Server Name</label><input className="form-input" value={serverForm.name} onChange={e => setServerForm({...serverForm, name: e.target.value})} /></div>
                             {providerOptions && (
@@ -194,7 +194,7 @@ const CloudProvision = () => {
                             )}
                             <div className="form-group"><label className="checkbox-label"><input type="checkbox" checked={serverForm.install_agent} onChange={e => setServerForm({...serverForm, install_agent: e.target.checked})} /> Auto-install ServerKit agent</label></div>
                         </div>
-                        <div className="modal__footer"><button className="btn" onClick={() => setShowCreateServer(false)}>Cancel</button><button className="btn btn--primary" onClick={handleCreateServer} disabled={!serverForm.name || !serverForm.provider_id}>Create</button></div>
+                        <div className="modal-footer"><button className="btn" onClick={() => setShowCreateServer(false)}>Cancel</button><button className="btn btn-primary" onClick={handleCreateServer} disabled={!serverForm.name || !serverForm.provider_id}>Create</button></div>
                     </div>
                 </div>
             )}

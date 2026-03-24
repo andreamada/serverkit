@@ -116,24 +116,24 @@ const AgentPlugins = () => {
 
     return (
         <div className="agent-plugins-page">
-            <header className="top-bar">
-                <div className="top-bar__title">
+            <div className="page-header">
+                <div className="page-header-content">
                     <h1>Agent Plugins</h1>
-                    <span className="top-bar__subtitle">{plugins.length} plugin{plugins.length !== 1 ? 's' : ''} registered</span>
+                    <p className="page-description">{plugins.length} plugin{plugins.length !== 1 ? 's' : ''} registered</p>
                 </div>
-                <div className="top-bar__actions">
+                <div className="page-header-actions">
                     <select value={filter} onChange={e => setFilter(e.target.value)} className="form-select">
                         <option value="all">All Plugins</option>
                         <option value="available">Available</option>
                         <option value="deprecated">Deprecated</option>
                     </select>
                     {user?.is_admin && (
-                        <button className="btn btn--primary" onClick={() => setShowCreateModal(true)}>
+                        <button className="btn btn-primary" onClick={() => setShowCreateModal(true)}>
                             Register Plugin
                         </button>
                     )}
                 </div>
-            </header>
+            </div>
 
             <div className="plugins-grid">
                 {filteredPlugins.map(plugin => (
@@ -165,11 +165,11 @@ const AgentPlugins = () => {
                             ))}
                         </div>
                         <div className="plugin-card__actions">
-                            <button className="btn btn--sm btn--primary" onClick={() => { setSelectedPlugin(plugin); setShowInstallModal(true); }}>
+                            <button className="btn btn-sm btn-primary" onClick={() => { setSelectedPlugin(plugin); setShowInstallModal(true); }}>
                                 Install
                             </button>
                             {user?.is_admin && (
-                                <button className="btn btn--sm btn--danger" onClick={() => setDeleteConfirm(plugin)}>
+                                <button className="btn btn-sm btn-danger" onClick={() => setDeleteConfirm(plugin)}>
                                     Delete
                                 </button>
                             )}
@@ -187,11 +187,11 @@ const AgentPlugins = () => {
             {showCreateModal && (
                 <div className="modal-overlay" onClick={() => setShowCreateModal(false)}>
                     <div className="modal" onClick={e => e.stopPropagation()}>
-                        <div className="modal__header">
+                        <div className="modal-header">
                             <h2>Register Plugin</h2>
-                            <button className="modal__close" onClick={() => setShowCreateModal(false)}>&times;</button>
+                            <button className="modal-close" onClick={() => setShowCreateModal(false)}>&times;</button>
                         </div>
-                        <div className="modal__body">
+                        <div className="modal-body">
                             <div className="form-group">
                                 <label>Plugin Name (identifier)</label>
                                 <input className="form-input" value={newPlugin.name} onChange={e => setNewPlugin({...newPlugin, name: e.target.value})} placeholder="my-plugin" />
@@ -245,9 +245,9 @@ const AgentPlugins = () => {
                                 </div>
                             </div>
                         </div>
-                        <div className="modal__footer">
+                        <div className="modal-footer">
                             <button className="btn" onClick={() => setShowCreateModal(false)}>Cancel</button>
-                            <button className="btn btn--primary" onClick={handleCreate} disabled={!newPlugin.name || !newPlugin.display_name}>Register</button>
+                            <button className="btn btn-primary" onClick={handleCreate} disabled={!newPlugin.name || !newPlugin.display_name}>Register</button>
                         </div>
                     </div>
                 </div>
@@ -257,11 +257,11 @@ const AgentPlugins = () => {
             {showInstallModal && selectedPlugin && (
                 <div className="modal-overlay" onClick={() => setShowInstallModal(false)}>
                     <div className="modal" onClick={e => e.stopPropagation()}>
-                        <div className="modal__header">
+                        <div className="modal-header">
                             <h2>Install {selectedPlugin.display_name}</h2>
-                            <button className="modal__close" onClick={() => setShowInstallModal(false)}>&times;</button>
+                            <button className="modal-close" onClick={() => setShowInstallModal(false)}>&times;</button>
                         </div>
-                        <div className="modal__body">
+                        <div className="modal-body">
                             <p>Select a server to install this plugin on:</p>
                             <div className="server-select-list">
                                 {servers.map(server => (
