@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-    Cpu, MemoryStick, HardDrive, Activity,
-    Plus, RefreshCw, Server, Zap,
-    RotateCcw, Database, Layers, Container, Globe, Code, Settings
+    HardDrive, Activity,
+    RefreshCw, Zap,
+    Database, Container, Globe, Code, Layers, Server, Terminal
 } from 'lucide-react';
 import api from '../services/api';
 import { useMetrics } from '../hooks/useMetrics';
@@ -19,49 +19,103 @@ const REFRESH_OPTIONS = [
     { label: '1m', value: 60 },
 ];
 
+const ServerSelectorIcon = () => (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <rect x="2" y="2" width="20" height="8" rx="2" ry="2"/>
+        <rect x="2" y="14" width="20" height="8" rx="2" ry="2"/>
+        <line x1="6" y1="6" x2="6.01" y2="6"/>
+        <line x1="6" y1="18" x2="6.01" y2="18"/>
+    </svg>
+);
+
 const Dashboard = () => {
     const navigate = useNavigate();
-    const { metrics, loading: metricsLoading, connected, refresh: refreshMetrics } = useMetrics(true);
+    const { metrics: localMetrics, loading: metricsLoading, connected, refresh: refreshMetrics } = useMetrics(true);
     const { widgets } = useDashboardLayout();
     const [apps, setApps] = useState([]);
-    const [services, setServices] = useState([]);
-    const [dbStatus, setDbStatus] = useState(null);
     const [systemInfo, setSystemInfo] = useState(null);
     const [loading, setLoading] = useState(true);
     const [refreshInterval, setRefreshInterval] = useState(() => {
         const saved = localStorage.getItem('dashboard_refresh_interval');
-        return saved ? parseInt(saved, 10) : 10; // Default 10 seconds
+        return saved ? parseInt(saved, 10) : 10;
     });
-    const [lastUpdate, setLastUpdate] = useState(Date.now());
     const [localUptime, setLocalUptime] = useState(null);
     const [localTime, setLocalTime] = useState(null);
     const lastServerUptime = React.useRef(null);
     const lastServerTime = React.useRef(null);
-    const syncedAt = React.useRef(null);
+
+    // Server selector state
+    const [servers, setServers] = useState([]);
+    const [selectedServer, setSelectedServer] = useState({ id: 'local', name: 'Local (this server)' });
+    const isRemote = selectedServer.id !== 'local';
+
+    // Remote metrics (when a non-local server is selected)
+    const [remoteMetrics, setRemoteMetrics] = useState(null);
+    const [remoteSystemInfo, setRemoteSystemInfo] = useState(null);
+    const [remoteLoading, setRemoteLoading] = useState(false);
+
+    // Active metrics: remote when a remote server is selected, local otherwise
+    const metrics = isRemote ? remoteMetrics : localMetrics;
+
+    const fetchRemote = useCallback(async () => {
+        if (!isRemote) return;
+        setRemoteLoading(true);
+        try {
+            const [metricsData, sysInfo] = await Promise.all([
+                api.getRemoteSystemMetrics(selectedServer.id),
+                api.getRemoteSystemInfo(selectedServer.id).catch(() => null)
+            ]);
+            setRemoteMetrics(metricsData);
+            setRemoteSystemInfo(sysInfo);
+        } catch (err) {
+            console.error('Failed to load remote metrics:', err);
+        } finally {
+            setRemoteLoading(false);
+        }
+    }, [selectedServer.id, isRemote]);
+
+    // Load servers list on mount
+    useEffect(() => {
+        api.getAvailableServers()
+            .then(data => setServers(Array.isArray(data) ? data : []))
+            .catch(() => setServers([{ id: 'local', name: 'Local (this server)', status: 'online' }]));
+    }, []);
+
+    // Fetch remote metrics when a remote server is selected
+    useEffect(() => {
+        if (!isRemote) {
+            setRemoteMetrics(null);
+            setRemoteSystemInfo(null);
+            return;
+        }
+
+        fetchRemote();
+        const interval = refreshInterval > 0
+            ? setInterval(fetchRemote, refreshInterval * 1000)
+            : null;
+
+        return () => { if (interval) clearInterval(interval); };
+    }, [fetchRemote, refreshInterval, isRemote]);
 
     // Sync local counters when server data arrives
     useEffect(() => {
         const serverUptime = metrics?.system?.uptime_seconds;
         const serverTimeStr = metrics?.time?.current_time_formatted;
-        const serverTzId = metrics?.time?.timezone_id;
 
         if (serverUptime && serverUptime !== lastServerUptime.current) {
             lastServerUptime.current = serverUptime;
             setLocalUptime(serverUptime);
-            syncedAt.current = Date.now();
         }
 
         if (serverTimeStr && serverTimeStr !== lastServerTime.current) {
             lastServerTime.current = serverTimeStr;
-            // Parse server time into a Date object
             try {
                 const parsed = new Date(serverTimeStr);
                 if (!isNaN(parsed)) {
                     setLocalTime(parsed);
-                    syncedAt.current = Date.now();
                 }
             } catch {
-                // If parsing fails, try extracting just the time portion
+                // If parsing fails, skip
             }
         }
     }, [metrics?.system?.uptime_seconds, metrics?.time?.current_time_formatted]);
@@ -85,23 +139,15 @@ const Dashboard = () => {
         loadData();
     }, []);
 
-    // Polling fallback when WebSocket is not connected
+    // Polling fallback when WebSocket is not connected (local only)
     useEffect(() => {
-        if (refreshInterval > 0 && !connected) {
+        if (refreshInterval > 0 && !connected && !isRemote) {
             const interval = setInterval(() => {
                 refreshMetrics();
-                setLastUpdate(Date.now());
             }, refreshInterval * 1000);
             return () => clearInterval(interval);
         }
-    }, [refreshInterval, connected, refreshMetrics]);
-
-    // Update lastUpdate when metrics change (from WebSocket)
-    useEffect(() => {
-        if (metrics) {
-            setLastUpdate(Date.now());
-        }
-    }, [metrics]);
+    }, [refreshInterval, connected, refreshMetrics, isRemote]);
 
     // Save refresh interval preference
     const handleRefreshIntervalChange = useCallback((value) => {
@@ -109,17 +155,24 @@ const Dashboard = () => {
         localStorage.setItem('dashboard_refresh_interval', value.toString());
     }, []);
 
+    function handleServerChange(e) {
+        const serverId = e.target.value;
+        const server = servers.find(s => s.id === serverId) || { id: 'local', name: 'Local (this server)' };
+        setSelectedServer(server);
+        // Reset ticking counters when switching servers
+        lastServerUptime.current = null;
+        lastServerTime.current = null;
+        setLocalUptime(null);
+        setLocalTime(null);
+    }
+
     async function loadData() {
         try {
-            const [appsData, servicesData, dbData, sysInfoData] = await Promise.all([
+            const [appsData, sysInfoData] = await Promise.all([
                 api.getApps(),
-                api.getServicesStatus().catch(() => ({ services: [] })),
-                api.getDatabaseStatus().catch(() => null),
                 api.getSystemInfo().catch(() => null)
             ]);
             setApps(appsData.apps || []);
-            setServices(servicesData.services || []);
-            setDbStatus(dbData);
             setSystemInfo(sysInfoData);
         } catch (err) {
             console.error('Failed to load data:', err);
@@ -128,22 +181,21 @@ const Dashboard = () => {
         }
     }
 
-    // Helper to format uptime from seconds
+    function handleRefreshAll() {
+        if (isRemote) {
+            fetchRemote();
+        } else {
+            refreshMetrics();
+        }
+        loadData();
+    }
+
     function formatUptime(seconds) {
         if (!seconds) return { days: 0, hours: 0, minutes: 0 };
         const days = Math.floor(seconds / 86400);
         const hours = Math.floor((seconds % 86400) / 3600);
         const minutes = Math.floor((seconds % 3600) / 60);
         return { days, hours, minutes };
-    }
-
-    function getStatusClass(status) {
-        switch (status) {
-            case 'running': return 'status-active';
-            case 'stopped': return 'status-stopped';
-            case 'error': return 'status-error';
-            default: return 'status-warning';
-        }
     }
 
     function getStackIcon(type) {
@@ -159,16 +211,19 @@ const Dashboard = () => {
 
     // Get uptime from local ticking counter (synced with server)
     const uptimeFormatted = formatUptime(localUptime ?? metrics?.system?.uptime_seconds);
-    // Fallback to systemInfo for static data, prefer metrics.system for live data
-    const hostname = metrics?.system?.hostname || systemInfo?.hostname || 'server';
-    const kernelVersion = metrics?.system?.kernel || systemInfo?.kernel || '-';
-    const ipAddress = metrics?.system?.ip_address || systemInfo?.ip_address || '-';
+    const activeSysInfo = isRemote ? remoteSystemInfo : systemInfo;
+    const hostname = metrics?.system?.hostname || activeSysInfo?.hostname || 'server';
+    const kernelVersion = metrics?.system?.kernel || activeSysInfo?.kernel || '-';
+    const ipAddress = metrics?.system?.ip_address || activeSysInfo?.ip_address || '-';
     const serverTime = metrics?.time;
 
     // Format the local ticking clock
     const displayTime = localTime
         ? localTime.toLocaleTimeString('en-US', { hour12: false })
         : serverTime?.current_time_formatted?.split(' ')[1] || '--:--:--';
+
+    // Show green if we have metrics data (regardless of transport — WS or HTTP poll)
+    const isConnected = isRemote ? !remoteLoading && !!remoteMetrics : !!localMetrics;
 
     if (loading && metricsLoading) {
         return <div className="loading">Loading dashboard...</div>;
@@ -180,7 +235,7 @@ const Dashboard = () => {
             <div className="top-bar">
                 <div className="server-identity">
                     <h1>
-                        <span className={`status-dot-live ${connected ? '' : 'disconnected'}`}></span>
+                        <span className={`status-dot-live ${isConnected ? '' : 'disconnected'}`}></span>
                         {hostname}
                     </h1>
                     <div className="server-details">
@@ -192,6 +247,18 @@ const Dashboard = () => {
                     </div>
                 </div>
                 <div className="top-bar-right">
+                    {servers.length > 1 && (
+                        <div className="server-selector">
+                            <ServerSelectorIcon />
+                            <select value={selectedServer.id} onChange={handleServerChange}>
+                                {servers.map(server => (
+                                    <option key={server.id} value={server.id} disabled={server.status === 'offline'}>
+                                        {server.name} {server.status === 'offline' ? '(Offline)' : ''}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
                     <div className="clock-widget">
                         <span className="clock-time">{displayTime}</span>
                         <span className="clock-zone">{serverTime?.timezone_id || 'UTC'}</span>
@@ -199,7 +266,7 @@ const Dashboard = () => {
                     <div className="refresh-control">
                         <button
                             className="btn-refresh"
-                            onClick={() => { refreshMetrics(); loadData(); }}
+                            onClick={handleRefreshAll}
                             title="Refresh now"
                         >
                             <RefreshCw size={14} />
@@ -231,9 +298,6 @@ const Dashboard = () => {
                                 <div className="tile-val">{(metrics?.cpu?.percent || 0).toFixed(1)}%</div>
                                 <div className="tile-sub">
                                     <span>Cores: {metrics?.cpu?.count_logical || 0}</span>
-                                    <span className={metrics?.cpu?.percent > 50 ? 'trend-up' : 'trend-down'}>
-                                        {metrics?.cpu?.percent > 50 ? '▲' : '▼'} {Math.abs(metrics?.cpu?.percent - 50).toFixed(0)}%
-                                    </span>
                                 </div>
                             </div>
                         ),
@@ -290,27 +354,27 @@ const Dashboard = () => {
                         specs: () => (
                             <div key="specs" className="spec-panel">
                                 <h3 className="spec-panel-title">Quick Actions</h3>
+                                <button className="btn-action" onClick={() => navigate('/servers')}>
+                                    <span>Manage Servers</span>
+                                    <span><Server size={14} /></span>
+                                </button>
                                 <button className="btn-action" onClick={() => navigate('/docker')}>
-                                    <span>Restart Services</span>
-                                    <span>►</span>
+                                    <span>Docker Containers</span>
+                                    <span><Container size={14} /></span>
                                 </button>
-                                <button className="btn-action" onClick={() => navigate('/databases')}>
-                                    <span>Clear Cache</span>
-                                    <span><Zap size={14} /></span>
-                                </button>
-                                <button className="btn-action" onClick={() => navigate('/ssl')}>
-                                    <span>Rotate SSL Certs</span>
-                                    <span><RotateCcw size={14} /></span>
+                                <button className="btn-action" onClick={() => navigate('/terminal')}>
+                                    <span>Open Terminal</span>
+                                    <span><Terminal size={14} /></span>
                                 </button>
 
                                 <h3 className="spec-panel-title mt-6">Hardware Specs</h3>
                                 <div className="spec-row">
                                     <span className="spec-label">Processor</span>
-                                    <span className="spec-data">{systemInfo?.cpu?.model || 'N/A'}</span>
+                                    <span className="spec-data">{activeSysInfo?.cpu?.model || 'N/A'}</span>
                                 </div>
                                 <div className="spec-row">
                                     <span className="spec-label">Architecture</span>
-                                    <span className="spec-data">{systemInfo?.cpu?.architecture || 'N/A'}</span>
+                                    <span className="spec-data">{activeSysInfo?.cpu?.architecture || 'N/A'}</span>
                                 </div>
                                 <div className="spec-row">
                                     <span className="spec-label">Swap Memory</span>
@@ -321,7 +385,7 @@ const Dashboard = () => {
                         processes: () => (
                             <div key="processes" className="table-panel">
                                 <div className="table-header">
-                                    <span>Active Processes / Containers</span>
+                                    <span>Applications</span>
                                     <button className="btn btn-sm btn-secondary" onClick={loadData}>
                                         <RefreshCw size={14} />
                                     </button>

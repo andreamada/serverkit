@@ -7,6 +7,11 @@
     flex-direction: column;
     gap: $space-6;
     min-height: 100%;
+
+    // Override generic .top-bar margin from _main-content (40px not needed here)
+    > .top-bar {
+        margin-bottom: 0;
+    }
 }
 
 // --- Top Bar: Pro Layout ---

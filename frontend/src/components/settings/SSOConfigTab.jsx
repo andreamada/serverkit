@@ -156,19 +156,32 @@ const SSOConfigTab = () => {
             )}
 
             {/* General Settings */}
-            <div className="settings-card">
-                <h3><Globe size={18} /> General Settings</h3>
-                <div className="settings-form">
-                    <div className="form-group">
-                        <label className="toggle-label">
-                            <input
-                                type="checkbox"
-                                checked={autoProvision}
-                                onChange={e => setAutoProvision(e.target.checked)}
-                            />
+            <div className="settings-card sso-general-card">
+                <div className="settings-card__header">
+                    <div className="settings-card__header-left">
+                        <Globe size={20} />
+                        <div>
+                            <h3>General Settings</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="sso-general-form">
+                    <div className="settings-row">
+                        <div className="settings-label">
                             <span>Auto-provision users</span>
-                        </label>
-                        <p className="form-help">Automatically create accounts for new SSO users</p>
+                            <span className="settings-hint">Automatically create accounts for new SSO users</span>
+                        </div>
+                        <div className="settings-control">
+                            <label className="toggle-switch">
+                                <input
+                                    type="checkbox"
+                                    checked={autoProvision}
+                                    onChange={e => setAutoProvision(e.target.checked)}
+                                />
+                                <span className="toggle-slider"></span>
+                            </label>
+                        </div>
                     </div>
 
                     <div className="form-group">
@@ -180,23 +193,29 @@ const SSOConfigTab = () => {
                         </select>
                     </div>
 
-                    <div className="form-group">
-                        <label className="toggle-label">
-                            <input
-                                type="checkbox"
-                                checked={forceSso}
-                                onChange={e => setForceSso(e.target.checked)}
-                            />
+                    <div className="settings-row">
+                        <div className="settings-label">
                             <span>SSO-only mode</span>
-                        </label>
-                        <p className="form-help">
-                            {forceSso && (
-                                <span className="text-warning">
-                                    <AlertTriangle size={14} /> Password login will be disabled for all users.
-                                </span>
-                            )}
-                            {!forceSso && 'Disable password login and require SSO for all users'}
-                        </p>
+                            <span className="settings-hint">
+                                {forceSso ? (
+                                    <span className="text-warning">
+                                        <AlertTriangle size={14} /> Password login will be disabled for all users.
+                                    </span>
+                                ) : (
+                                    'Disable password login and require SSO for all users'
+                                )}
+                            </span>
+                        </div>
+                        <div className="settings-control">
+                            <label className="toggle-switch">
+                                <input
+                                    type="checkbox"
+                                    checked={forceSso}
+                                    onChange={e => setForceSso(e.target.checked)}
+                                />
+                                <span className="toggle-slider"></span>
+                            </label>
+                        </div>
                     </div>
 
                     <div className="form-group">
@@ -207,7 +226,7 @@ const SSOConfigTab = () => {
                             onChange={e => setAllowedDomains(e.target.value)}
                             placeholder="company.com, example.org"
                         />
-                        <p className="form-help">Comma-separated. Leave empty to allow all domains.</p>
+                        <span className="form-help">Comma-separated. Leave empty to allow all domains.</span>
                     </div>
 
                     <button
@@ -247,15 +266,20 @@ const SSOConfigTab = () => {
 
                         {isExpanded && (
                             <div className="sso-provider-config__body">
-                                <div className="form-group">
-                                    <label className="toggle-label">
-                                        <input
-                                            type="checkbox"
-                                            checked={enabled}
-                                            onChange={e => setFieldValue(provider.id, 'enabled', e.target.checked)}
-                                        />
+                                <div className="settings-row">
+                                    <div className="settings-label">
                                         <span>Enable {provider.name}</span>
-                                    </label>
+                                    </div>
+                                    <div className="settings-control">
+                                        <label className="toggle-switch">
+                                            <input
+                                                type="checkbox"
+                                                checked={enabled}
+                                                onChange={e => setFieldValue(provider.id, 'enabled', e.target.checked)}
+                                            />
+                                            <span className="toggle-slider"></span>
+                                        </label>
+                                    </div>
                                 </div>
 
                                 {provider.fields.map(field => (

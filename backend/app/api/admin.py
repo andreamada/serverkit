@@ -518,10 +518,11 @@ def get_activity_summary():
                 'action_count': count
             })
 
-    # Daily action counts for the past 7 days
+    # Daily action counts for the past 90 days
     daily_counts = []
-    for i in range(7):
-        day_start = today_start - timedelta(days=6 - i)
+    days_to_fetch = 90
+    for i in range(days_to_fetch):
+        day_start = today_start - timedelta(days=(days_to_fetch - 1) - i)
         day_end = day_start + timedelta(days=1)
         count = db.session.query(func.count(AuditLog.id)).filter(
             AuditLog.created_at >= day_start,
@@ -532,12 +533,30 @@ def get_activity_summary():
             'count': count
         })
 
+    # Top user activity (past 90 days)
+    top_user_daily = []
+    if top_users:
+        top_user_id = top_users[0]['user_id']
+        for i in range(days_to_fetch):
+            day_start = today_start - timedelta(days=(days_to_fetch - 1) - i)
+            day_end = day_start + timedelta(days=1)
+            count = db.session.query(func.count(AuditLog.id)).filter(
+                AuditLog.user_id == top_user_id,
+                AuditLog.created_at >= day_start,
+                AuditLog.created_at < day_end
+            ).scalar() or 0
+            top_user_daily.append({
+                'date': day_start.strftime('%Y-%m-%d'),
+                'count': count
+            })
+
     return jsonify({
         'active_users_today': active_today,
         'actions_this_week': actions_this_week,
         'total_users': total_users,
         'top_users': top_users,
         'daily_counts': daily_counts,
+        'top_user_daily': top_user_daily,
     }), 200
 
 

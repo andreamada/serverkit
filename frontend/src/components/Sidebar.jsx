@@ -72,20 +72,21 @@ const Sidebar = () => {
 
     const conditions = { wpInstalled };
     const currentPreset = user?.sidebar_config?.preset || 'full';
-    const [expandedItems, setExpandedItems] = useState({});
+    const [manualExpanded, setManualExpanded] = useState({});
+    const [autoExpanded, setAutoExpanded] = useState(null);
     const location = useLocation();
 
     const toggleExpand = (itemId) => {
-        setExpandedItems(prev => ({ ...prev, [itemId]: !prev[itemId] }));
+        const currentlyExpanded = manualExpanded[itemId] ?? (autoExpanded === itemId);
+        setManualExpanded(prev => ({ ...prev, [itemId]: !currentlyExpanded }));
     };
 
-    const handlePresetSwitch = async (presetKey) => {
+    const handlePresetSwitch = (presetKey) => {
         if (presetKey === currentPreset) return;
         const config = { preset: presetKey, hiddenItems: [] };
-        try {
-            await api.updateCurrentUser({ sidebar_config: config });
-            await updateUser({ sidebar_config: config });
-        } catch {}
+        // Update locally first (instant), persist to backend in background
+        updateUser({ sidebar_config: config });
+        api.updateCurrentUser({ sidebar_config: config }).catch(() => {});
     };
 
     const visibleItems = useMemo(
@@ -105,19 +106,27 @@ const Sidebar = () => {
         return groups;
     }, [visibleItems]);
 
-    // Auto-expand parent when a sub-item route is active
+    // Auto-expand the active parent (or parent of active sub-item), auto-close others
     useEffect(() => {
         const path = location.pathname;
+        let activeParent = null;
         for (const item of visibleItems) {
-            if (item.subItems?.some(sub => path === sub.route || path.startsWith(sub.route + '/'))) {
-                setExpandedItems(prev => prev[item.id] ? prev : { ...prev, [item.id]: true });
+            if (!item.subItems?.length) continue;
+            // Expand if on the parent route itself or any sub-item route
+            if (path === item.route || path.startsWith(item.route + '/') ||
+                item.subItems.some(sub => path === sub.route || path.startsWith(sub.route + '/'))) {
+                activeParent = item.id;
+                break;
             }
         }
+        setAutoExpanded(activeParent);
+        setManualExpanded({});
     }, [location.pathname, visibleItems]);
 
     const renderNavItem = (item) => {
         const hasChildren = item.subItems && item.subItems.length > 0;
-        const isExpanded = expandedItems[item.id];
+        // Show expanded if manually toggled OR auto-expanded by active route
+        const isExpanded = manualExpanded[item.id] ?? (autoExpanded === item.id);
         const visibleSubs = hasChildren
             ? item.subItems.filter(sub => !sub.requiresCondition || conditions[sub.requiresCondition])
             : [];

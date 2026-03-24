@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import useTabParam from '../hooks/useTabParam';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
@@ -6,10 +6,10 @@ import ProfileTab from '../components/settings/ProfileTab';
 import SecuritySettingsTab from '../components/settings/SecuritySettingsTab';
 import AppearanceTab from '../components/settings/AppearanceTab';
 import SidebarSettings from '../components/settings/SidebarSettings';
+import WhiteLabelTab from '../components/settings/WhiteLabelTab';
 import NotificationsTab from '../components/settings/NotificationsTab';
 import SystemTab from '../components/settings/SystemTab';
 import UsersTab from '../components/settings/UsersTab';
-import AuditLogTab from '../components/settings/AuditLogTab';
 import ActivityTab from '../components/settings/ActivityTab';
 import SiteSettingsTab from '../components/settings/SiteSettingsTab';
 import SSOConfigTab from '../components/settings/SSOConfigTab';
@@ -17,9 +17,9 @@ import ApiSettingsTab from '../components/settings/ApiSettingsTab';
 import MigrationHistoryTab from '../components/settings/MigrationHistoryTab';
 import IconReferenceTab from '../components/settings/IconReferenceTab';
 import AboutTab from '../components/settings/AboutTab';
-import { Activity, Code, Database } from 'lucide-react';
+import { Activity, Code, Database, Layers } from 'lucide-react';
 
-const VALID_TABS = ['profile', 'security', 'appearance', 'sidebar', 'notifications', 'system', 'users', 'audit', 'activity', 'site', 'sso', 'api', 'migrations', 'developer', 'about'];
+const VALID_TABS = ['profile', 'security', 'appearance', 'sidebar', 'whitelabel', 'notifications', 'system', 'users', 'activity', 'site', 'sso', 'api', 'migrations', 'developer', 'about'];
 
 const Settings = () => {
     const [activeTab, setActiveTab] = useTabParam('/settings', VALID_TABS);
@@ -104,6 +104,13 @@ const Settings = () => {
                         </svg>
                         Sidebar
                     </button>
+                    <button
+                        className={`settings-nav-item ${activeTab === 'whitelabel' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('whitelabel')}
+                    >
+                        <Layers size={18} />
+                        White Label
+                    </button>
                     {isAdmin && (
                         <>
                             <div className="settings-nav-divider">Admin</div>
@@ -118,19 +125,6 @@ const Settings = () => {
                                     <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
                                 </svg>
                                 Users
-                            </button>
-                            <button
-                                className={`settings-nav-item ${activeTab === 'audit' ? 'active' : ''}`}
-                                onClick={() => setActiveTab('audit')}
-                            >
-                                <svg viewBox="0 0 24 24" width="18" height="18">
-                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                                    <polyline points="14 2 14 8 20 8"/>
-                                    <line x1="16" y1="13" x2="8" y2="13"/>
-                                    <line x1="16" y1="17" x2="8" y2="17"/>
-                                    <polyline points="10 9 9 9 8 9"/>
-                                </svg>
-                                Audit Log
                             </button>
                             <button
                                 className={`settings-nav-item ${activeTab === 'activity' ? 'active' : ''}`}
@@ -199,7 +193,6 @@ const Settings = () => {
                             </button>
                         </>
                     )}
-                    <div className="settings-nav-spacer" />
                     <button
                         className={`settings-nav-item ${activeTab === 'about' ? 'active' : ''}`}
                         onClick={() => setActiveTab('about')}
@@ -218,9 +211,9 @@ const Settings = () => {
                     {activeTab === 'security' && <SecuritySettingsTab />}
                     {activeTab === 'appearance' && <AppearanceTab />}
                     {activeTab === 'sidebar' && <SidebarSettings />}
+                    {activeTab === 'whitelabel' && <WhiteLabelTab />}
                     {activeTab === 'notifications' && <NotificationsTab />}
                     {activeTab === 'users' && isAdmin && <UsersTab />}
-                    {activeTab === 'audit' && isAdmin && <AuditLogTab />}
                     {activeTab === 'activity' && isAdmin && <ActivityTab />}
                     {activeTab === 'site' && isAdmin && <SiteSettingsTab onDevModeChange={setDevMode} />}
                     {activeTab === 'sso' && isAdmin && <SSOConfigTab />}

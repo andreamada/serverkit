@@ -62,9 +62,13 @@ English | [Español](docs/README.es.md) | [中文版](docs/README.zh-CN.md) | [P
 
 **Domain Management** — Nginx virtual hosts with easy configuration
 
+**DNS Zone Management** — Full DNS record management with propagation checking (A, AAAA, CNAME, MX, TXT, etc.)
+
 **SSL Certificates** — Automatic Let's Encrypt with auto-renewal
 
 **Databases** — MySQL/MariaDB and PostgreSQL with user management and query interface
+
+**Cloud Provisioning** — Provision servers on DigitalOcean, Hetzner, Vultr, and Linode with cost tracking
 
 **Firewall** — UFW/firewalld with visual rule management and port presets
 
@@ -96,7 +100,13 @@ English | [Español](docs/README.es.md) | [中文版](docs/README.zh-CN.md) | [P
 
 **Agent-Based Architecture** — Go agent with HMAC-SHA256 authentication and real-time WebSocket gateway
 
-**Fleet Overview** — Centralized dashboard with server grouping, tagging, and health monitoring
+**Fleet Management** — Agent lifecycle control with version rollouts, approval queue, network discovery, and command queue
+
+**Fleet Monitor** — Cross-server heatmaps, metric comparison charts, alert thresholds, anomaly detection, and capacity forecasting
+
+**Agent Plugins** — Extensible plugin system with capabilities, permissions, and per-server installation
+
+**Server Templates** — Configuration templates with compliance tracking, drift detection, and auto-remediation
 
 **Remote Docker** — Manage containers, images, volumes, networks, and Compose projects across all servers
 
@@ -110,6 +120,8 @@ English | [Español](docs/README.es.md) | [中文版](docs/README.zh-CN.md) | [P
 
 **Uptime Tracking** — Historical server uptime data and visualization
 
+**Status Pages** — Public status pages with HTTP/TCP/DNS/Ping health checks, component monitoring, and incident management
+
 **Notifications** — Discord, Slack, Telegram, email (HTML templates), and generic webhooks
 
 **Per-User Preferences** — Individual notification channels, severity filters, and quiet hours
@@ -117,6 +129,8 @@ English | [Español](docs/README.es.md) | [中文版](docs/README.zh-CN.md) | [P
 ### 👥 Team & Access Control
 
 **Multi-User** — Admin, developer, and viewer roles with team invitations
+
+**Workspaces** — Multi-tenant workspace isolation with quotas and member management
 
 **RBAC** — Granular per-feature permissions (read/write per module)
 
@@ -127,6 +141,18 @@ English | [Español](docs/README.es.md) | [中文版](docs/README.zh-CN.md) | [P
 **API Keys** — Tiered API keys (standard/elevated/unlimited) with rate limiting, usage analytics, and OpenAPI documentation
 
 **Webhook Subscriptions** — Event-driven webhooks with HMAC signatures, retry logic, and custom headers
+
+### 🎨 Customization
+
+**Sidebar Presets** — Switch between Full, Web Hosting, Email Admin, DevOps, and Minimal views with one click
+
+**Collapsible Navigation** — Sidebar groups auto-expand on navigation and collapse when switching sections
+
+**Accent Colors** — 8 preset accent colors plus custom hex picker
+
+**Custom Branding** — White-label the sidebar with your own logo, brand name, or full-width banner
+
+**Dashboard Widgets** — Toggle and reorder dashboard widgets to fit your workflow
 
 ---
 
@@ -262,13 +288,15 @@ See the [Installation Guide](docs/INSTALLATION.md) for step-by-step instructions
 - [x] API enhancements — API keys, rate limiting, OpenAPI docs, webhook subscriptions
 - [x] SSO & OAuth — Google, GitHub, OIDC, SAML
 - [x] Database migrations — Flask-Migrate/Alembic, versioned schema
-- [ ] Agent fleet management — Auto-upgrade, bulk ops, offline command queue
-- [ ] Cross-server monitoring — Fleet dashboard, anomaly detection, alerting
-- [ ] Agent plugin system — Extensible agent with custom metrics, commands, health checks
-- [ ] Server templates & config sync — Drift detection, compliance dashboards
-- [ ] Multi-tenancy — Workspaces, team isolation, per-workspace settings
-- [ ] DNS zone management — Cloudflare, Route53, DigitalOcean integrations
-- [ ] Status pages — Public status page, health checks, incident management
+- [x] Agent fleet management — Version rollouts, approval queue, discovery, command queue
+- [x] Cross-server monitoring — Fleet heatmaps, comparison charts, anomaly detection, capacity forecasting
+- [x] Agent plugin system — Extensible agent with capabilities, permissions, per-server install
+- [x] Server templates & config sync — Drift detection, compliance dashboards, auto-remediation
+- [x] Multi-tenancy — Workspaces with quotas, member management, isolation
+- [x] DNS zone management — Full record management with propagation checking
+- [x] Status pages — Public status pages with health checks, incident management
+- [x] Cloud provisioning — DigitalOcean, Hetzner, Vultr, Linode with cost tracking
+- [x] Customizable sidebar — Collapsible groups, view presets, accent colors, white-label branding
 
 Full details: [ROADMAP.md](ROADMAP.md)
 
@@ -292,7 +320,7 @@ Full details: [ROADMAP.md](ROADMAP.md)
 | Layer | Technology |
 |-------|------------|
 | Backend | Python 3.11, Flask, SQLAlchemy, Flask-SocketIO, Flask-Migrate |
-| Frontend | React 18, Vite, LESS, Recharts |
+| Frontend | React 18, Vite, SCSS, Recharts |
 | Database | SQLite / PostgreSQL |
 | Web Server | Nginx, Gunicorn (GeventWebSocket) |
 | Containers | Docker, Docker Compose |
@@ -311,7 +339,7 @@ Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) first.
 fork → feature branch → commit → push → pull request
 ```
 
-**Priority areas:** Agent plugin system, fleet management, DNS integrations, status pages, UI/UX improvements, documentation.
+**Priority areas:** Cloud provider integrations, marketplace extensions, UI/UX improvements, documentation, test coverage.
 
 ---
 
