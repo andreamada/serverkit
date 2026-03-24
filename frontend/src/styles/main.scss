@@ -1,0 +1,95 @@
+// ============================================
+// SERVERKIT - MAIN STYLESHEET
+// ============================================
+// This file imports all SCSS partials in the correct order.
+// Import this file in your main React entry point.
+// ============================================
+
+// --------------------------------------------
+// 1. DESIGN TOKENS
+// --------------------------------------------
+@import '_theme-variables';  // CSS custom properties for runtime theming (must be first)
+@import '_variables';
+@import '_mixins';
+
+// --------------------------------------------
+// 2. BASE STYLES
+// --------------------------------------------
+@import 'base/_reset';
+@import 'base/_typography';
+@import 'base/_utilities';
+
+// --------------------------------------------
+// 3. LAYOUT
+// --------------------------------------------
+@import 'layout/_sidebar';
+@import 'layout/_main-content';
+@import 'layout/_grid';
+
+// --------------------------------------------
+// 4. COMPONENTS
+// --------------------------------------------
+@import 'components/_buttons';
+@import 'components/_cards';
+@import 'components/_modals';
+@import 'components/_forms';
+@import 'components/_badges';
+@import 'components/_tabs';
+@import 'components/_lists';
+@import 'components/_services';
+@import 'components/_logs';
+@import 'components/_credentials';
+@import 'components/_toasts';
+@import 'components/_spinner';
+@import 'components/_uptime';
+@import 'components/_metrics-graph';
+@import 'components/_env-vars';
+@import 'components/_private-url';
+@import 'components/_two-factor';
+@import 'components/_notifications';
+@import 'components/_query-runner';
+@import 'components/_deploy';
+@import 'components/_build';
+@import 'components/_users';
+@import 'components/_linked-apps';
+@import 'components/_api-settings';
+
+// --------------------------------------------
+// 5. PAGE-SPECIFIC STYLES
+// --------------------------------------------
+@import 'pages/_auth';
+@import 'pages/_dashboard';
+@import 'pages/_applications';
+@import 'pages/_docker';
+@import 'pages/_databases';
+@import 'pages/_domains';
+@import 'pages/_monitoring';
+@import 'pages/_backups';
+@import 'pages/_terminal';
+@import 'pages/_settings';
+@import 'pages/_file-manager';
+@import 'pages/_ftp-server';
+@import 'pages/_firewall';
+@import 'pages/_cron';
+@import 'pages/_security';
+@import 'pages/_templates';
+@import 'pages/_workflow';
+@import 'pages/_git';
+@import 'pages/_servers';
+@import 'pages/_downloads';
+@import 'pages/_wordpress';
+@import 'pages/_wordpress-pipeline';
+@import 'pages/_ssl';
+@import 'pages/_email';
+@import 'pages/_setup-wizard';
+@import 'pages/_migration-wizard';
+@import 'pages/_services';
+@import 'pages/_service-detail';
+@import 'pages/_fleet-monitor';
+@import 'pages/_agent-plugins';
+@import 'pages/_server-templates';
+@import 'pages/_workspaces';
+@import 'pages/_dns-zones';
+@import 'pages/_status-pages';
+@import 'pages/_cloud-provision';
+@import 'pages/_marketplace';

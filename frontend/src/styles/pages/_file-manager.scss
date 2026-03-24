@@ -1,0 +1,814 @@
+// File Manager Page Styles
+
+.file-manager {
+    display: flex;
+    flex-direction: column;
+    gap: $space-4;
+
+    .page-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        flex-wrap: wrap;
+        gap: $space-4;
+
+        .page-header-content {
+            h1 {
+                font-size: $font-size-2xl;
+                font-weight: $font-weight-semibold;
+                margin: 0 0 $space-1 0;
+            }
+
+            .page-description {
+                color: $text-secondary;
+                margin: 0;
+            }
+        }
+
+        .page-header-actions {
+            display: flex;
+            gap: $space-2;
+            flex-wrap: wrap;
+
+            .btn {
+                display: flex;
+                align-items: center;
+                gap: $space-2;
+            }
+        }
+    }
+
+    .upload-progress {
+        display: flex;
+        align-items: center;
+        gap: $space-3;
+        padding: $space-3 $space-4;
+        background: $bg-card;
+        border-radius: $radius-lg;
+
+        .progress-bar {
+            flex: 1;
+            height: 8px;
+            background: $border-default;
+            border-radius: $radius-sm;
+            overflow: hidden;
+
+            .progress-fill {
+                height: 100%;
+                background: $accent-primary;
+                @include transition(width);
+            }
+        }
+
+        span {
+            font-size: $font-size-sm;
+            font-weight: $font-weight-medium;
+            color: $text-secondary;
+            min-width: 40px;
+        }
+    }
+
+    .file-manager-toolbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: $space-3 $space-4;
+        background: $bg-card;
+        border-radius: $radius-lg;
+        gap: $space-4;
+        flex-wrap: wrap;
+
+        .path-breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: $space-2;
+
+            .current-path {
+                font-family: $font-mono;
+                font-size: $font-size-sm;
+                color: $text-primary;
+                background: $bg-tertiary;
+                padding: $space-2 $space-3;
+                border-radius: $radius-md;
+            }
+        }
+
+        .toolbar-actions {
+            display: flex;
+            align-items: center;
+            gap: $space-3;
+            flex-wrap: wrap;
+
+            .search-box {
+                display: flex;
+                align-items: center;
+                gap: $space-2;
+                background: $bg-tertiary;
+                border-radius: $radius-md;
+                padding: 0 $space-2;
+                position: relative;
+
+                .search-icon {
+                    color: $text-tertiary;
+                    flex-shrink: 0;
+                }
+
+                input {
+                    background: transparent;
+                    border: none;
+                    padding: $space-2 $space-3;
+                    font-size: $font-size-sm;
+                    width: 180px;
+                    color: $text-primary;
+
+                    &::placeholder {
+                        color: $text-tertiary;
+                    }
+
+                    &:focus {
+                        outline: none;
+                    }
+                }
+            }
+
+            .checkbox-label {
+                display: flex;
+                align-items: center;
+                gap: $space-2;
+                font-size: $font-size-sm;
+                color: $text-secondary;
+                cursor: pointer;
+
+                input[type="checkbox"] {
+                    width: 16px;
+                    height: 16px;
+                }
+
+                svg {
+                    color: $text-tertiary;
+                }
+            }
+        }
+    }
+
+    // Main layout with sidebar
+    .file-manager-layout {
+        display: flex;
+        gap: $space-4;
+        min-height: 0;
+    }
+
+    .file-manager-main {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .file-manager-content {
+        display: grid;
+        grid-template-columns: 1fr 400px;
+        gap: $space-4;
+
+        @media (max-width: $breakpoint-xl) {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    // Sidebar
+    .file-manager-sidebar {
+        width: 320px;
+        flex-shrink: 0;
+        display: flex;
+        flex-direction: column;
+        gap: $space-4;
+        overflow-y: auto;
+        max-height: calc(100vh - 120px);
+        @include transition(all);
+
+        @media (max-width: $breakpoint-lg) {
+            position: fixed;
+            right: 0;
+            top: 64px;
+            bottom: 0;
+            width: 100%;
+            max-width: 360px;
+            max-height: none;
+            background: $bg-body;
+            padding: $space-4;
+            z-index: $z-modal;
+            box-shadow: -4px 0 20px rgba(0, 0, 0, 0.3);
+        }
+    }
+
+    &:not(.sidebar-open) .file-manager-sidebar {
+        @media (max-width: $breakpoint-lg) {
+            transform: translateX(100%);
+        }
+    }
+
+    .sidebar-section {
+        background: $bg-card;
+        border-radius: $radius-lg;
+        overflow: hidden;
+
+        &:last-child {
+            max-height: none;
+        }
+    }
+
+    .sidebar-section-header {
+        display: flex;
+        align-items: center;
+        gap: $space-2;
+        padding: $space-3 $space-4;
+        background: $bg-elevated;
+        border: none;
+        width: 100%;
+        text-align: left;
+        cursor: pointer;
+        color: $text-primary;
+        font-size: $font-size-sm;
+        font-weight: $font-weight-medium;
+        @include transition(background);
+
+        &:hover {
+            background: $bg-tertiary;
+        }
+
+        &.static {
+            cursor: default;
+
+            &:hover {
+                background: $bg-elevated;
+            }
+        }
+
+        span {
+            flex: 1;
+        }
+
+        .close-btn {
+            margin-left: auto;
+        }
+    }
+
+    .sidebar-section-content {
+        padding: $space-3 $space-4;
+    }
+
+    // Disk usage section
+    .disk-header-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: $space-3;
+    }
+
+    .disk-updated {
+        display: flex;
+        align-items: center;
+        gap: $space-1;
+        font-size: $font-size-xs;
+        color: $text-tertiary;
+    }
+
+    .disk-mount-item {
+        padding: $space-3 0;
+        border-bottom: 1px solid $border-subtle;
+
+        &:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        &:first-child {
+            padding-top: 0;
+        }
+    }
+
+    .disk-mount-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: $space-2;
+    }
+
+    .disk-mount-point {
+        font-family: $font-mono;
+        font-size: $font-size-sm;
+        color: $text-primary;
+    }
+
+    .disk-percent {
+        font-size: $font-size-sm;
+        font-weight: $font-weight-medium;
+
+        &.healthy { color: $success; }
+        &.warning { color: $warning; }
+        &.critical { color: $danger; }
+    }
+
+    .disk-progress {
+        height: 6px;
+        background: $border-default;
+        border-radius: $radius-sm;
+        overflow: hidden;
+        margin-bottom: $space-2;
+
+        .disk-progress-fill {
+            height: 100%;
+            @include transition(width);
+        }
+
+        &.healthy .disk-progress-fill { background: $success; }
+        &.warning .disk-progress-fill { background: $warning; }
+        &.critical .disk-progress-fill { background: $danger; }
+    }
+
+    .disk-mount-info {
+        display: flex;
+        justify-content: space-between;
+        font-size: $font-size-xs;
+        color: $text-tertiary;
+    }
+
+    .disk-device {
+        font-family: $font-mono;
+    }
+
+    // Analysis section
+    .analysis-loading {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: $space-2;
+        padding: $space-6 0;
+        color: $text-secondary;
+        font-size: $font-size-sm;
+    }
+
+    .analysis-total {
+        font-size: $font-size-sm;
+        font-weight: $font-weight-medium;
+        color: $text-primary;
+        margin-bottom: $space-3;
+    }
+
+    .analysis-tabs {
+        display: flex;
+        gap: $space-2;
+        margin-bottom: $space-3;
+    }
+
+    .analysis-tab {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: $space-1;
+        padding: $space-2;
+        background: $bg-tertiary;
+        border: 1px solid transparent;
+        border-radius: $radius-md;
+        font-size: $font-size-xs;
+        color: $text-secondary;
+        cursor: pointer;
+        @include transition(all);
+
+        &:hover {
+            background: $bg-hover;
+        }
+
+        &.active {
+            background: $accent-glow;
+            border-color: fade($accent-primary-raw, 30%);
+            color: $accent-primary;
+        }
+    }
+
+    .analysis-bars {
+        display: flex;
+        flex-direction: column;
+        gap: $space-2;
+    }
+
+    .analysis-bar-item {
+        cursor: pointer;
+        padding: $space-2;
+        border-radius: $radius-md;
+        @include transition(background);
+
+        &:hover {
+            background: $bg-hover;
+        }
+    }
+
+    .analysis-bar-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: $space-1;
+    }
+
+    .analysis-bar-name {
+        display: flex;
+        align-items: center;
+        gap: $space-1;
+        font-size: $font-size-xs;
+        color: $text-primary;
+        @include truncate();
+
+        svg {
+            color: $warning;
+            flex-shrink: 0;
+        }
+    }
+
+    .analysis-bar-size {
+        font-size: $font-size-xs;
+        color: $text-tertiary;
+        font-family: $font-mono;
+    }
+
+    .analysis-bar-track {
+        height: 4px;
+        background: $border-default;
+        border-radius: $radius-sm;
+        overflow: hidden;
+    }
+
+    .analysis-bar-fill {
+        height: 100%;
+        background: $accent-primary;
+        @include transition(width);
+    }
+
+    .analysis-files {
+        display: flex;
+        flex-direction: column;
+        gap: $space-1;
+    }
+
+    .analysis-file-item {
+        display: flex;
+        align-items: center;
+        gap: $space-2;
+        padding: $space-2;
+        border-radius: $radius-md;
+        cursor: pointer;
+        @include transition(background);
+
+        &:hover {
+            background: $bg-hover;
+        }
+
+        svg {
+            color: $text-tertiary;
+            flex-shrink: 0;
+        }
+    }
+
+    .analysis-file-name {
+        flex: 1;
+        font-size: $font-size-xs;
+        color: $text-primary;
+        @include truncate();
+    }
+
+    .analysis-file-size {
+        font-size: $font-size-xs;
+        color: $text-tertiary;
+        font-family: $font-mono;
+    }
+
+    .analysis-empty {
+        padding: $space-4 0;
+        text-align: center;
+        color: $text-tertiary;
+        font-size: $font-size-sm;
+    }
+
+    // Type breakdown chart
+    .type-breakdown-chart {
+        margin-bottom: $space-3;
+    }
+
+    .type-breakdown-legend {
+        display: flex;
+        flex-direction: column;
+        gap: $space-2;
+    }
+
+    .type-legend-item {
+        display: flex;
+        align-items: center;
+        gap: $space-2;
+    }
+
+    .type-legend-color {
+        width: 10px;
+        height: 10px;
+        border-radius: $radius-sm;
+        flex-shrink: 0;
+    }
+
+    .type-legend-name {
+        flex: 1;
+        font-size: $font-size-xs;
+        color: $text-primary;
+    }
+
+    .type-legend-size {
+        font-size: $font-size-xs;
+        color: $text-tertiary;
+        font-family: $font-mono;
+    }
+
+    // File list
+    .file-list-container {
+        background: $bg-card;
+        border-radius: $radius-lg;
+        overflow: hidden;
+
+        .loading-state,
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: $space-12;
+            color: $text-tertiary;
+
+            svg {
+                margin-bottom: $space-4;
+            }
+
+            p {
+                margin: 0;
+            }
+        }
+    }
+
+    .file-list {
+        .file-list-header {
+            display: grid;
+            grid-template-columns: 1fr 100px 120px 120px 120px;
+            padding: $space-3 $space-4;
+            background: $bg-tertiary;
+            font-size: $font-size-xs;
+            font-weight: $font-weight-semibold;
+            text-transform: uppercase;
+            color: $text-tertiary;
+            border-bottom: 1px solid $border-default;
+        }
+
+        .file-item {
+            display: grid;
+            grid-template-columns: 1fr 100px 120px 120px 120px;
+            padding: $space-3 $space-4;
+            border-bottom: 1px solid $border-default;
+            cursor: pointer;
+            @include transition(background);
+
+            &:hover {
+                background: $bg-hover;
+            }
+
+            &.selected {
+                background: $accent-glow;
+            }
+
+            .col-name {
+                display: flex;
+                align-items: center;
+                gap: $space-2;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+
+                .link-indicator {
+                    color: $text-tertiary;
+                    font-size: $font-size-sm;
+                }
+            }
+
+            .col-size,
+            .col-modified,
+            .col-permissions {
+                font-size: $font-size-sm;
+                color: $text-secondary;
+            }
+
+            .col-permissions {
+                font-family: $font-mono;
+                font-size: $font-size-xs;
+            }
+
+            .col-actions {
+                display: flex;
+                gap: $space-1;
+                justify-content: flex-end;
+
+                .btn-icon {
+                    opacity: 0;
+                    @include transition(opacity);
+                }
+            }
+
+            &:hover .col-actions .btn-icon {
+                opacity: 1;
+            }
+        }
+    }
+
+    // File icons
+    .file-icon-svg {
+        flex-shrink: 0;
+        color: $text-tertiary;
+
+        &.folder { color: $warning; }
+        &.code { color: #8b5cf6; }
+        &.image { color: $success; }
+        &.video { color: #ec4899; }
+        &.audio { color: $warning; }
+        &.archive { color: $danger; }
+        &.data { color: #14b8a6; }
+        &.text { color: $text-secondary; }
+        &.terminal { color: $success; }
+    }
+
+    // File preview
+    .file-preview {
+        background: $bg-card;
+        border-radius: $radius-lg;
+        display: flex;
+        flex-direction: column;
+        max-height: calc(100vh - 300px);
+
+        .preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: $space-4;
+            border-bottom: 1px solid $border-default;
+
+            h3 {
+                margin: 0;
+                font-size: $font-size-base;
+                font-weight: $font-weight-semibold;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
+            .preview-actions {
+                display: flex;
+                gap: $space-2;
+            }
+        }
+
+        .preview-info {
+            display: flex;
+            gap: $space-4;
+            padding: $space-3 $space-4;
+            background: $bg-tertiary;
+            font-size: $font-size-xs;
+            color: $text-secondary;
+            flex-wrap: wrap;
+        }
+
+        .file-editor {
+            flex: 1;
+            padding: $space-4;
+            font-family: $font-mono;
+            font-size: $font-size-sm;
+            line-height: $line-height-relaxed;
+            background: $bg-body;
+            border: none;
+            resize: none;
+            color: $text-primary;
+
+            &:focus {
+                outline: none;
+            }
+
+            &[readonly] {
+                background: $bg-tertiary;
+            }
+        }
+
+        .preview-unavailable {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: $space-12;
+            color: $text-tertiary;
+
+            svg {
+                margin-bottom: $space-4;
+            }
+
+            p {
+                margin-bottom: $space-4;
+            }
+        }
+    }
+
+    .permissions-help {
+        margin-top: $space-4;
+        padding: $space-3;
+        background: $bg-tertiary;
+        border-radius: $radius-md;
+        font-size: $font-size-sm;
+
+        p {
+            margin: 0 0 $space-2 0;
+            font-weight: $font-weight-medium;
+        }
+
+        ul {
+            margin: 0;
+            padding-left: $space-5;
+
+            li {
+                margin-bottom: $space-1;
+            }
+
+            code {
+                background: $bg-body;
+                padding: 2px $space-2;
+                border-radius: $radius-sm;
+            }
+        }
+    }
+
+    // Spinning animation for refresh
+    .spinning {
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+}
+
+// Responsive adjustments
+@media (max-width: $breakpoint-md) {
+    .file-manager {
+        .page-header {
+            flex-direction: column;
+            align-items: stretch;
+
+            .page-header-actions {
+                justify-content: flex-end;
+            }
+        }
+
+        .file-manager-toolbar {
+            flex-direction: column;
+            align-items: stretch;
+
+            .path-breadcrumb {
+                order: 1;
+            }
+
+            .toolbar-actions {
+                order: 2;
+                justify-content: space-between;
+            }
+        }
+
+        .file-list {
+            .file-list-header,
+            .file-item {
+                grid-template-columns: 1fr 80px 100px;
+
+                .col-permissions,
+                .col-modified {
+                    display: none;
+                }
+            }
+        }
+    }
+}
+
+@media (max-width: $breakpoint-sm) {
+    .file-manager {
+        .file-list {
+            .file-list-header,
+            .file-item {
+                grid-template-columns: 1fr 80px;
+
+                .col-size {
+                    display: none;
+                }
+            }
+        }
+
+        .file-manager-content {
+            grid-template-columns: 1fr !important;
+        }
+    }
+}

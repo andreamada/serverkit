@@ -17,11 +17,11 @@ class User(db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False, index=True)
     username = db.Column(db.String(80), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(256), nullable=True)
-    auth_provider = db.Column(db.String(50), default='local')  # local, google, github, oidc, saml
+    auth_provider = db.Column(db.String(50), default='local', index=True)  # local, google, github, oidc, saml
     role = db.Column(db.String(20), default='developer')  # 'admin', 'developer', 'viewer'
     permissions = db.Column(db.Text, nullable=True)  # JSON per-feature read/write flags
     is_active = db.Column(db.Boolean, default=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     last_login_at = db.Column(db.DateTime, nullable=True)
     created_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)

@@ -38,7 +38,8 @@ class Application(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
 
     # Relationships
-    domains = db.relationship('Domain', backref='application', lazy='dynamic', cascade='all, delete-orphan')
+    # Use 'subquery' to eagerly load domains in a single query, avoiding N+1
+    domains = db.relationship('Domain', backref='application', lazy='subquery', cascade='all, delete-orphan')
     linked_app = db.relationship('Application', remote_side=[id], backref='linked_from', foreign_keys=[linked_app_id])
 
     def to_dict(self, include_linked=False):

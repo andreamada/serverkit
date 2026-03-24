@@ -85,6 +85,65 @@ class DatabaseService:
             return {'success': False, 'error': str(e)}
 
     @staticmethod
+    def _mysql_execute_parameterized(query, params, database=None, root_password=None):
+        """Execute a MySQL query with parameterized values using mysql CLI.
+
+        Uses the mysql --execute flag with a prepared statement approach:
+        passes the query through stdin with proper escaping to avoid injection.
+
+        Args:
+            query: SQL query with %s placeholders
+            params: List of parameter values to substitute safely
+            database: Optional database name
+            root_password: Optional MySQL root password
+        """
+        try:
+            # Build the parameterized query using mysql's built-in escaping
+            # by passing values through a SET/EXECUTE pattern via stdin
+            cmd = ['mysql', '-u', 'root', '--batch', '-N']
+            if database:
+                cmd.extend(['-D', database])
+
+            # Use MYSQL_PWD env var to avoid passing password on CLI
+            env = None
+            if root_password:
+                env = os.environ.copy()
+                env['MYSQL_PWD'] = root_password
+
+            # Build a safe query using user-defined variables and EXECUTE
+            # For simple single-param queries, we use a quoted literal approach
+            # MySQL's cli doesn't support true parameterized queries, so we use
+            # hex-encoding for string safety
+            safe_params = []
+            for p in params:
+                if p is None:
+                    safe_params.append('NULL')
+                elif isinstance(p, (int, float)):
+                    safe_params.append(str(p))
+                else:
+                    # Hex-encode string values: 0x<hex> is safe from injection
+                    hex_val = p.encode('utf-8').hex()
+                    safe_params.append(f"0x{hex_val}")
+
+            # Replace %s placeholders with safe values
+            safe_query = query
+            for sp in safe_params:
+                safe_query = safe_query.replace('%s', sp, 1)
+
+            cmd.extend(['-e', safe_query])
+
+            result = subprocess.run(
+                cmd, capture_output=True, text=True, env=env
+            )
+            return {
+                'success': result.returncode == 0,
+                'output': result.stdout,
+                'error': result.stderr if result.returncode != 0 else None
+            }
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
+
+    @staticmethod
     def mysql_list_databases(root_password=None):
         """List all MySQL databases."""
         result = DatabaseService.mysql_execute(
@@ -99,15 +158,16 @@ class DatabaseService:
         for line in result['output'].strip().split('\n')[1:]:
             db_name = line.strip()
             if db_name and db_name not in system_dbs:
-                # Get database size
-                size_result = DatabaseService.mysql_execute(
-                    f"SELECT SUM(data_length + index_length) as size FROM information_schema.tables WHERE table_schema = '{db_name}';",
-                    root_password=root_password
+                # Get database size using parameterized query via MySQL CLI
+                # Pass db_name as a separate argument to avoid SQL injection
+                size_query = "SELECT SUM(data_length + index_length) as size FROM information_schema.tables WHERE table_schema = %s;"
+                size_result = DatabaseService._mysql_execute_parameterized(
+                    size_query, [db_name], root_password=root_password
                 )
                 size = 0
                 if size_result['success']:
                     try:
-                        size_line = size_result['output'].strip().split('\n')[1]
+                        size_line = size_result['output'].strip().split('\n')[0]
                         size = int(size_line) if size_line and size_line != 'NULL' else 0
                     except (IndexError, ValueError):
                         pass
@@ -168,11 +228,39 @@ class DatabaseService:
             return {'success': False, 'error': 'Invalid identifier: only alphanumeric characters and underscores allowed'}
         if not _validate_identifier(host):
             return {'success': False, 'error': 'Invalid host identifier'}
-        # Use MYSQL_PWD env var to avoid passing password on CLI
-        escaped_password = password.replace("'", "\\'").replace("\\", "\\\\")
-        query = f"CREATE USER IF NOT EXISTS '{username}'@'{host}' IDENTIFIED BY '{escaped_password}';"
-        result = DatabaseService.mysql_execute(query, root_password=root_password)
-        return result
+        # Use hex-encoded password with UNHEX + QUOTE to safely pass the password
+        # without manual string escaping. Username and host are validated above.
+        try:
+            cmd = ['mysql', '-u', 'root']
+
+            env = None
+            if root_password:
+                env = os.environ.copy()
+                env['MYSQL_PWD'] = root_password
+
+            # Hex-encode the password so it never appears as a raw string in SQL.
+            # UNHEX converts it back to bytes, CAST converts to string, QUOTE wraps
+            # it safely for use in a dynamic SQL statement.
+            hex_pw = password.encode('utf-8').hex()
+            safe_stmt = (
+                f"SET @pw = UNHEX('{hex_pw}');\n"
+                f"SET @pw = CAST(@pw AS CHAR);\n"
+                f"SET @sql = CONCAT('CREATE USER IF NOT EXISTS ''{username}''@''{host}'' IDENTIFIED BY ', QUOTE(@pw));\n"
+                f"PREPARE stmt FROM @sql;\n"
+                f"EXECUTE stmt;\n"
+                f"DEALLOCATE PREPARE stmt;\n"
+            )
+
+            result = subprocess.run(
+                cmd, capture_output=True, text=True, input=safe_stmt, env=env
+            )
+            return {
+                'success': result.returncode == 0,
+                'output': result.stdout,
+                'error': result.stderr if result.returncode != 0 else None
+            }
+        except Exception as e:
+            return {'success': False, 'error': str(e)}
 
     @staticmethod
     def mysql_drop_user(username, host='localhost', root_password=None):
@@ -425,10 +513,20 @@ class DatabaseService:
     @staticmethod
     def pg_drop_database(name):
         """Drop a PostgreSQL database."""
-        # Terminate connections first
-        DatabaseService.pg_execute(
-            f"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '{name}';"
-        )
+        if not _validate_identifier(name):
+            return {'success': False, 'error': 'Invalid identifier: only alphanumeric characters and underscores allowed'}
+        # Terminate connections first using psql variable binding to prevent injection
+        try:
+            cmd = [
+                'sudo', '-u', 'postgres', 'psql', '-d', 'postgres',
+                '-v', f'dbname={name}',
+                '-c', "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = :'dbname';",
+                '-t', '-A'
+            ]
+            subprocess.run(cmd, capture_output=True, text=True)
+        except Exception:
+            pass
+        # Name is validated above, safe to use in identifier position
         result = DatabaseService.pg_execute(f'DROP DATABASE IF EXISTS "{name}";')
         return result
 

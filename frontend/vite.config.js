@@ -12,6 +12,16 @@ export default defineConfig({
             interval: 1000,
         },
     },
+    css: {
+        preprocessorOptions: {
+            scss: {
+                // Silence Dart Sass deprecation warnings for @import and slash-div
+                // These are expected during migration from LESS and will be addressed
+                // when moving to @use/@forward module system
+                silenceDeprecations: ['import', 'slash-div', 'legacy-js-api', 'global-builtin'],
+            },
+        },
+    },
     build: {
         sourcemap: false,
         rollupOptions: {

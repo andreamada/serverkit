@@ -30,10 +30,10 @@ def get_file_info():
     path = request.args.get('path')
 
     if not path:
-        return jsonify({'success': False, 'error': 'Path is required'}), 400
+        return jsonify({'error': 'Path is required'}), 400
 
     if not FileService.is_path_allowed(path):
-        return jsonify({'success': False, 'error': 'Access denied'}), 403
+        return jsonify({'error': 'Access denied'}), 403
 
     info = FileService.get_file_info(path)
 
@@ -41,7 +41,7 @@ def get_file_info():
         return jsonify({'success': True, 'file': info}), 200
 
     error = info.get('error', 'File not found') if info else 'File not found'
-    return jsonify({'success': False, 'error': error}), 404
+    return jsonify({'error': error}), 404
 
 
 @files_bp.route('/read', methods=['GET'])
@@ -51,7 +51,7 @@ def read_file():
     path = request.args.get('path')
 
     if not path:
-        return jsonify({'success': False, 'error': 'Path is required'}), 400
+        return jsonify({'error': 'Path is required'}), 400
 
     result = FileService.read_file(path)
 
@@ -69,17 +69,17 @@ def write_file():
     data = request.get_json()
 
     if not data:
-        return jsonify({'success': False, 'error': 'Request body is required'}), 400
+        return jsonify({'error': 'Request body is required'}), 400
 
     path = data.get('path')
     content = data.get('content')
     create_backup = data.get('create_backup', True)
 
     if not path:
-        return jsonify({'success': False, 'error': 'Path is required'}), 400
+        return jsonify({'error': 'Path is required'}), 400
 
     if content is None:
-        return jsonify({'success': False, 'error': 'Content is required'}), 400
+        return jsonify({'error': 'Content is required'}), 400
 
     result = FileService.write_file(path, content, create_backup=create_backup)
 
@@ -97,13 +97,13 @@ def create_file():
     data = request.get_json()
 
     if not data:
-        return jsonify({'success': False, 'error': 'Request body is required'}), 400
+        return jsonify({'error': 'Request body is required'}), 400
 
     path = data.get('path')
     content = data.get('content', '')
 
     if not path:
-        return jsonify({'success': False, 'error': 'Path is required'}), 400
+        return jsonify({'error': 'Path is required'}), 400
 
     result = FileService.create_file(path, content)
 
@@ -121,12 +121,12 @@ def create_directory():
     data = request.get_json()
 
     if not data:
-        return jsonify({'success': False, 'error': 'Request body is required'}), 400
+        return jsonify({'error': 'Request body is required'}), 400
 
     path = data.get('path')
 
     if not path:
-        return jsonify({'success': False, 'error': 'Path is required'}), 400
+        return jsonify({'error': 'Path is required'}), 400
 
     result = FileService.create_directory(path)
 
@@ -144,7 +144,7 @@ def delete_path():
     path = request.args.get('path')
 
     if not path:
-        return jsonify({'success': False, 'error': 'Path is required'}), 400
+        return jsonify({'error': 'Path is required'}), 400
 
     result = FileService.delete(path)
 
@@ -162,13 +162,13 @@ def rename_path():
     data = request.get_json()
 
     if not data:
-        return jsonify({'success': False, 'error': 'Request body is required'}), 400
+        return jsonify({'error': 'Request body is required'}), 400
 
     path = data.get('path')
     new_name = data.get('new_name')
 
     if not path or not new_name:
-        return jsonify({'success': False, 'error': 'Path and new_name are required'}), 400
+        return jsonify({'error': 'Path and new_name are required'}), 400
 
     result = FileService.rename(path, new_name)
 
@@ -186,13 +186,13 @@ def copy_path():
     data = request.get_json()
 
     if not data:
-        return jsonify({'success': False, 'error': 'Request body is required'}), 400
+        return jsonify({'error': 'Request body is required'}), 400
 
     src = data.get('src')
     dest = data.get('dest')
 
     if not src or not dest:
-        return jsonify({'success': False, 'error': 'Source and destination paths are required'}), 400
+        return jsonify({'error': 'Source and destination paths are required'}), 400
 
     result = FileService.copy(src, dest)
 
@@ -210,13 +210,13 @@ def move_path():
     data = request.get_json()
 
     if not data:
-        return jsonify({'success': False, 'error': 'Request body is required'}), 400
+        return jsonify({'error': 'Request body is required'}), 400
 
     src = data.get('src')
     dest = data.get('dest')
 
     if not src or not dest:
-        return jsonify({'success': False, 'error': 'Source and destination paths are required'}), 400
+        return jsonify({'error': 'Source and destination paths are required'}), 400
 
     result = FileService.move(src, dest)
 
@@ -234,13 +234,13 @@ def change_permissions():
     data = request.get_json()
 
     if not data:
-        return jsonify({'success': False, 'error': 'Request body is required'}), 400
+        return jsonify({'error': 'Request body is required'}), 400
 
     path = data.get('path')
     mode = data.get('mode')
 
     if not path or not mode:
-        return jsonify({'success': False, 'error': 'Path and mode are required'}), 400
+        return jsonify({'error': 'Path and mode are required'}), 400
 
     result = FileService.change_permissions(path, mode)
 
@@ -260,7 +260,7 @@ def search_files():
     max_results = request.args.get('max_results', 100, type=int)
 
     if not pattern:
-        return jsonify({'success': False, 'error': 'Search pattern is required'}), 400
+        return jsonify({'error': 'Search pattern is required'}), 400
 
     result = FileService.search(directory, pattern, max_results=max_results)
 
@@ -335,16 +335,16 @@ def download_file():
     path = request.args.get('path')
 
     if not path:
-        return jsonify({'success': False, 'error': 'Path is required'}), 400
+        return jsonify({'error': 'Path is required'}), 400
 
     if not FileService.is_path_allowed(path):
-        return jsonify({'success': False, 'error': 'Access denied'}), 403
+        return jsonify({'error': 'Access denied'}), 403
 
     if not os.path.exists(path):
-        return jsonify({'success': False, 'error': 'File not found'}), 404
+        return jsonify({'error': 'File not found'}), 404
 
     if os.path.isdir(path):
-        return jsonify({'success': False, 'error': 'Cannot download directory'}), 400
+        return jsonify({'error': 'Cannot download directory'}), 400
 
     try:
         return send_file(
@@ -353,7 +353,7 @@ def download_file():
             download_name=os.path.basename(path)
         )
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'error': str(e)}), 500
 
 
 @files_bp.route('/upload', methods=['POST'])
@@ -361,19 +361,19 @@ def download_file():
 def upload_file():
     """Upload a file."""
     if 'file' not in request.files:
-        return jsonify({'success': False, 'error': 'No file provided'}), 400
+        return jsonify({'error': 'No file provided'}), 400
 
     file = request.files['file']
     destination = request.form.get('destination')
 
     if not destination:
-        return jsonify({'success': False, 'error': 'Destination path is required'}), 400
+        return jsonify({'error': 'Destination path is required'}), 400
 
     if not FileService.is_path_allowed(destination):
-        return jsonify({'success': False, 'error': 'Access denied'}), 403
+        return jsonify({'error': 'Access denied'}), 403
 
     if file.filename == '':
-        return jsonify({'success': False, 'error': 'No file selected'}), 400
+        return jsonify({'error': 'No file selected'}), 400
 
     # Check file size
     file.seek(0, 2)
@@ -382,7 +382,6 @@ def upload_file():
 
     if size > FileService.MAX_UPLOAD_SIZE:
         return jsonify({
-            'success': False,
             'error': f'File too large. Maximum size is {FileService._format_size(FileService.MAX_UPLOAD_SIZE)}'
         }), 400
 
@@ -394,7 +393,7 @@ def upload_file():
             full_path = destination
 
         if not FileService.is_path_allowed(full_path):
-            return jsonify({'success': False, 'error': 'Access denied'}), 403
+            return jsonify({'error': 'Access denied'}), 403
 
         # Ensure parent directory exists
         parent = os.path.dirname(full_path)
@@ -411,6 +410,6 @@ def upload_file():
         }), 201
 
     except PermissionError:
-        return jsonify({'success': False, 'error': 'Permission denied'}), 403
+        return jsonify({'error': 'Permission denied'}), 403
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        return jsonify({'error': str(e)}), 500

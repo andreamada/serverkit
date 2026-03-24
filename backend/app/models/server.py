@@ -24,7 +24,8 @@ class ServerGroup(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
-    servers = db.relationship('Server', back_populates='group', lazy='dynamic')
+    # Use 'subquery' to eagerly load servers in a single query, avoiding N+1
+    servers = db.relationship('Server', back_populates='group', lazy='subquery')
     children = db.relationship('ServerGroup', backref=db.backref('parent', remote_side=[id]))
 
     def to_dict(self, include_servers=False):
@@ -37,7 +38,7 @@ class ServerGroup(db.Model):
             'parent_id': self.parent_id,
             'auto_upgrade': self.auto_upgrade,
             'upgrade_channel': self.upgrade_channel,
-            'server_count': self.servers.count(),
+            'server_count': len(self.servers),
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None,
         }
@@ -62,11 +63,11 @@ class Server(db.Model):
     ip_address = db.Column(db.String(45))  # IPv4 or IPv6
 
     # Organization
-    group_id = db.Column(db.String(36), db.ForeignKey('server_groups.id'), nullable=True)
+    group_id = db.Column(db.String(36), db.ForeignKey('server_groups.id'), nullable=True, index=True)
     tags = db.Column(db.JSON, default=list)  # ["production", "us-east", "docker"]
 
     # Status
-    status = db.Column(db.String(20), default='pending')
+    status = db.Column(db.String(20), default='pending', index=True)
     # pending, connecting, online, offline, error, maintenance
     last_seen = db.Column(db.DateTime)
     last_error = db.Column(db.Text)

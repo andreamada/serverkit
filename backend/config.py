@@ -51,6 +51,11 @@ class TestingConfig(Config):
 class ProductionConfig(Config):
     DEBUG = False
 
+    # Secure session cookies in production
+    SESSION_COOKIE_SECURE = True
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = 'Lax'
+
     def __init__(self):
         # Validate that secret keys are not default values in production
         if self.SECRET_KEY in INSECURE_SECRET_KEYS:

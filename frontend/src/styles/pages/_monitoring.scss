@@ -1,0 +1,143 @@
+// ============================================
+// MONITORING PAGE
+// ============================================
+
+.monitoring-page {
+    .monitoring-overview {
+        display: flex;
+        flex-direction: column;
+        gap: $space-6;
+    }
+
+    .threshold-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: $space-4;
+    }
+
+    .threshold-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: $space-4;
+        background: $bg-hover;
+        border-radius: $radius-md;
+    }
+
+    .threshold-label {
+        color: $text-secondary;
+        font-size: $font-size-sm;
+    }
+
+    .threshold-value {
+        font-size: $font-size-lg;
+        font-weight: $font-weight-semibold;
+        color: $accent-primary;
+    }
+
+    .threshold-form-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: $space-6;
+    }
+
+    .alert-list {
+        display: flex;
+        flex-direction: column;
+        gap: $space-2;
+    }
+
+    .alert-item {
+        display: flex;
+        align-items: center;
+        gap: $space-4;
+        padding: $space-3 $space-4;
+        background: $bg-hover;
+        border-radius: $radius-md;
+
+        .badge {
+            flex-shrink: 0;
+        }
+
+        .alert-message {
+            flex: 1;
+            font-size: $font-size-sm;
+            color: $text-primary;
+        }
+
+        .alert-time {
+            color: $text-tertiary;
+            font-size: $font-size-xs;
+            white-space: nowrap;
+        }
+    }
+
+    // Stat icon variants for monitoring
+    .stat-icon {
+        &.status {
+            background: fade($success, 10%);
+            color: $success;
+        }
+
+        &.alerts {
+            background: fade($danger, 10%);
+            color: $danger;
+        }
+
+        &.interval {
+            background: fade($accent-primary-raw, 10%);
+            color: $accent-primary;
+        }
+
+        &.notifications {
+            background: fade(#a855f7, 10%);
+            color: #a855f7;
+        }
+    }
+
+    .text-success {
+        color: $success;
+    }
+
+    .text-muted {
+        color: $text-tertiary;
+    }
+
+    .input-group {
+        display: flex;
+        gap: $space-2;
+
+        input {
+            flex: 1;
+        }
+
+        .btn {
+            flex-shrink: 0;
+        }
+    }
+
+    .checkbox-label {
+        display: flex;
+        align-items: center;
+        gap: $space-2;
+        cursor: pointer;
+
+        input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        span {
+            font-size: $font-size-sm;
+            color: $text-primary;
+        }
+    }
+
+    .form-help {
+        display: block;
+        margin-top: $space-1;
+        font-size: $font-size-xs;
+        color: $text-tertiary;
+    }
+}

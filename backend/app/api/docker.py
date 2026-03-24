@@ -2,23 +2,10 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.models import User, Application
 from app.services.docker_service import DockerService
+from app.middleware.rbac import admin_required
 from app import db, paths
 
 docker_bp = Blueprint('docker', __name__)
-
-
-def admin_required(fn):
-    """Decorator to require admin role."""
-    from functools import wraps
-
-    @wraps(fn)
-    def wrapper(*args, **kwargs):
-        current_user_id = get_jwt_identity()
-        user = User.query.get(current_user_id)
-        if not user or user.role != 'admin':
-            return jsonify({'error': 'Admin access required'}), 403
-        return fn(*args, **kwargs)
-    return wrapper
 
 
 # ==================== DOCKER STATUS ====================
@@ -162,7 +149,6 @@ def remove_container(container_id):
         container_name = container.get('name', '').lower().replace('/', '')
         if any(protected in container_name for protected in PROTECTED_CONTAINERS):
             return jsonify({
-                'success': False,
                 'error': 'Cannot delete ServerKit system container. This container is required for the panel to function.'
             }), 403
 
@@ -612,7 +598,6 @@ def cleanup_all_apps():
     except Exception as e:
         db.session.rollback()
         return jsonify({
-            'success': False,
             'error': f'Database commit failed: {str(e)}',
             'results': results
         }), 500

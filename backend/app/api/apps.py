@@ -578,7 +578,6 @@ def get_container_logs(app_id):
                 break
         if not container_id:
             return jsonify({
-                'success': False,
                 'error': f'Service "{service}" not found',
                 'available_services': [c.get('service') or c.get('name') for c in all_containers]
             }), 404
@@ -590,7 +589,6 @@ def get_container_logs(app_id):
 
     if not container_id:
         return jsonify({
-            'success': False,
             'error': 'No container found for this application',
             'hint': 'The application may not have been started yet'
         }), 404
@@ -599,7 +597,6 @@ def get_container_logs(app_id):
     container_state = DockerService.get_container_state(container_id)
     if not container_state:
         return jsonify({
-            'success': False,
             'error': 'Container not found or no longer exists'
         }), 404
 
@@ -613,7 +610,6 @@ def get_container_logs(app_id):
 
     if not result.get('success'):
         return jsonify({
-            'success': False,
             'error': result.get('error', 'Failed to fetch logs')
         }), 400
 
