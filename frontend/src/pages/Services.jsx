@@ -6,6 +6,14 @@ import { getServiceType, getStatusConfig, formatRelativeTime } from '../utils/se
 
 const SERVICE_TYPE_OPTIONS = ['all', 'docker', 'flask', 'django', 'php', 'static', 'wordpress'];
 const STATUS_OPTIONS = ['all', 'running', 'stopped'];
+const SORT_OPTIONS = [
+    { value: 'name-asc', label: 'Name A-Z' },
+    { value: 'name-desc', label: 'Name Z-A' },
+    { value: 'status', label: 'Status' },
+    { value: 'type', label: 'Type' },
+    { value: 'recent', label: 'Recently deployed' },
+    { value: 'created', label: 'Recently created' },
+];
 
 const Services = () => {
     const navigate = useNavigate();
@@ -15,7 +23,10 @@ const Services = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [typeFilter, setTypeFilter] = useState('all');
     const [statusFilter, setStatusFilter] = useState('all');
+    const [sortBy, setSortBy] = useState('status');
     const [actionLoading, setActionLoading] = useState(null);
+    const [selectedIds, setSelectedIds] = useState(new Set());
+    const [bulkLoading, setBulkLoading] = useState(false);
 
     useEffect(() => {
         loadApps();
@@ -47,26 +58,83 @@ const Services = () => {
         }
     }
 
+    async function handleBulkAction(action) {
+        if (selectedIds.size === 0) return;
+        setBulkLoading(true);
+        try {
+            const promises = [...selectedIds].map(id => {
+                if (action === 'start') return api.startApp(id);
+                if (action === 'stop') return api.stopApp(id);
+                if (action === 'restart') return api.restartApp(id);
+                return Promise.resolve();
+            });
+            await Promise.allSettled(promises);
+            toast.success(`${action} sent to ${selectedIds.size} service(s)`);
+            setSelectedIds(new Set());
+            await loadApps();
+        } catch (err) {
+            toast.error(`Bulk ${action} failed`);
+        } finally {
+            setBulkLoading(false);
+        }
+    }
+
+    function toggleSelect(e, appId) {
+        e.stopPropagation();
+        setSelectedIds(prev => {
+            const next = new Set(prev);
+            if (next.has(appId)) next.delete(appId);
+            else next.add(appId);
+            return next;
+        });
+    }
+
+    function toggleSelectAll() {
+        if (selectedIds.size === filteredApps.length) {
+            setSelectedIds(new Set());
+        } else {
+            setSelectedIds(new Set(filteredApps.map(a => a.id)));
+        }
+    }
+
     const filteredApps = useMemo(() => {
-        return apps.filter(app => {
-            if (searchTerm && !app.name.toLowerCase().includes(searchTerm.toLowerCase())) {
-                return false;
-            }
-            if (typeFilter !== 'all' && app.app_type !== typeFilter) {
-                return false;
-            }
-            if (statusFilter !== 'all' && app.status !== statusFilter) {
-                return false;
-            }
+        let result = apps.filter(app => {
+            if (searchTerm && !app.name.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+            if (typeFilter !== 'all' && app.app_type !== typeFilter) return false;
+            if (statusFilter !== 'all' && (statusFilter === 'running' ? app.status !== 'running' : app.status === 'running')) return false;
             return true;
         });
-    }, [apps, searchTerm, typeFilter, statusFilter]);
 
-    const stats = useMemo(() => ({
-        total: apps.length,
-        running: apps.filter(a => a.status === 'running').length,
-        stopped: apps.filter(a => a.status !== 'running').length,
-    }), [apps]);
+        result.sort((a, b) => {
+            switch (sortBy) {
+                case 'name-asc': return a.name.localeCompare(b.name);
+                case 'name-desc': return b.name.localeCompare(a.name);
+                case 'status': {
+                    const order = { running: 0, deploying: 1, building: 2, stopped: 3, failed: 4 };
+                    return (order[a.status] ?? 5) - (order[b.status] ?? 5);
+                }
+                case 'type': return (a.app_type || '').localeCompare(b.app_type || '');
+                case 'recent': return new Date(b.last_deploy_at || 0) - new Date(a.last_deploy_at || 0);
+                case 'created': return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+                default: return 0;
+            }
+        });
+
+        return result;
+    }, [apps, searchTerm, typeFilter, statusFilter, sortBy]);
+
+    const stats = useMemo(() => {
+        const running = apps.filter(a => a.status === 'running').length;
+        const stopped = apps.filter(a => a.status !== 'running').length;
+        const types = {};
+        apps.forEach(a => { types[a.app_type] = (types[a.app_type] || 0) + 1; });
+        const topType = Object.entries(types).sort((a, b) => b[1] - a[1])[0];
+        const recentDeploy = apps
+            .filter(a => a.last_deploy_at)
+            .sort((a, b) => new Date(b.last_deploy_at) - new Date(a.last_deploy_at))[0];
+
+        return { total: apps.length, running, stopped, topType, recentDeploy };
+    }, [apps]);
 
     if (loading) {
         return <div className="loading">Loading services...</div>;
@@ -90,6 +158,66 @@ const Services = () => {
                 </Link>
             </div>
 
+            {/* Summary Cards */}
+            {apps.length > 0 && (
+                <div className="services-page__summary">
+                    <div className="services-page__summary-card">
+                        <div className="services-page__summary-icon services-page__summary-icon--live">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+                            </svg>
+                        </div>
+                        <div className="services-page__summary-info">
+                            <span className="services-page__summary-value">{stats.running}</span>
+                            <span className="services-page__summary-label">Running</span>
+                        </div>
+                    </div>
+                    <div className="services-page__summary-card">
+                        <div className="services-page__summary-icon services-page__summary-icon--stopped">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <line x1="15" y1="9" x2="9" y2="15"/>
+                                <line x1="9" y1="9" x2="15" y2="15"/>
+                            </svg>
+                        </div>
+                        <div className="services-page__summary-info">
+                            <span className="services-page__summary-value">{stats.stopped}</span>
+                            <span className="services-page__summary-label">Stopped</span>
+                        </div>
+                    </div>
+                    <div className="services-page__summary-card">
+                        <div className="services-page__summary-icon services-page__summary-icon--type">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                            </svg>
+                        </div>
+                        <div className="services-page__summary-info">
+                            <span className="services-page__summary-value">{stats.total}</span>
+                            <span className="services-page__summary-label">
+                                Total{stats.topType ? ` (${stats.topType[1]} ${stats.topType[0]})` : ''}
+                            </span>
+                        </div>
+                    </div>
+                    <div className="services-page__summary-card">
+                        <div className="services-page__summary-icon services-page__summary-icon--deploy">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <polyline points="23 4 23 10 17 10"/>
+                                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                            </svg>
+                        </div>
+                        <div className="services-page__summary-info">
+                            <span className="services-page__summary-value">
+                                {stats.recentDeploy ? formatRelativeTime(stats.recentDeploy.last_deploy_at) : 'N/A'}
+                            </span>
+                            <span className="services-page__summary-label">
+                                Last Deploy{stats.recentDeploy ? ` (${stats.recentDeploy.name})` : ''}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Filters + Sort */}
             <div className="services-page__filters">
                 <div className="services-page__search">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -125,7 +253,37 @@ const Services = () => {
                         </option>
                     ))}
                 </select>
+                <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                    className="services-page__filter-select"
+                >
+                    {SORT_OPTIONS.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                </select>
             </div>
+
+            {/* Bulk Actions Bar */}
+            {selectedIds.size > 0 && (
+                <div className="services-page__bulk-bar">
+                    <span>{selectedIds.size} selected</span>
+                    <div className="services-page__bulk-actions">
+                        <button className="btn btn-sm" onClick={() => handleBulkAction('restart')} disabled={bulkLoading}>
+                            Restart All
+                        </button>
+                        <button className="btn btn-sm" onClick={() => handleBulkAction('stop')} disabled={bulkLoading}>
+                            Stop All
+                        </button>
+                        <button className="btn btn-sm" onClick={() => handleBulkAction('start')} disabled={bulkLoading}>
+                            Start All
+                        </button>
+                        <button className="btn btn-ghost btn-sm" onClick={() => setSelectedIds(new Set())}>
+                            Clear
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {filteredApps.length === 0 ? (
                 <div className="services-page__empty">
@@ -144,6 +302,24 @@ const Services = () => {
                 </div>
             ) : (
                 <div className="services-page__list">
+                    {/* List Header */}
+                    <div className="services-page__list-header">
+                        <div className="services-page__list-header-left">
+                            <input
+                                type="checkbox"
+                                checked={selectedIds.size === filteredApps.length && filteredApps.length > 0}
+                                onChange={toggleSelectAll}
+                                className="services-page__checkbox"
+                            />
+                            <span>Service</span>
+                        </div>
+                        <div className="services-page__list-header-right">
+                            <span>Status</span>
+                            <span>Last Deploy</span>
+                            <span>Actions</span>
+                        </div>
+                    </div>
+
                     {filteredApps.map(app => {
                         const typeInfo = getServiceType(app.app_type);
                         const statusInfo = getStatusConfig(app.status);
@@ -152,7 +328,7 @@ const Services = () => {
                         return (
                             <div
                                 key={app.id}
-                                className="services-page__row"
+                                className={`services-page__row ${selectedIds.has(app.id) ? 'services-page__row--selected' : ''}`}
                                 onClick={() => {
                                     if (app.app_type === 'wordpress') {
                                         navigate(`/wordpress/${app.id}`);
@@ -162,6 +338,13 @@ const Services = () => {
                                 }}
                             >
                                 <div className="services-page__row-main">
+                                    <input
+                                        type="checkbox"
+                                        checked={selectedIds.has(app.id)}
+                                        onChange={(e) => toggleSelect(e, app.id)}
+                                        onClick={(e) => e.stopPropagation()}
+                                        className="services-page__checkbox"
+                                    />
                                     <div
                                         className="services-page__type-icon"
                                         style={{ backgroundColor: typeInfo.bgColor, color: typeInfo.color }}
@@ -211,17 +394,29 @@ const Services = () => {
 
                                     <div className="services-page__actions" onClick={e => e.stopPropagation()}>
                                         {isRunning ? (
-                                            <button
-                                                className="btn btn-ghost btn-sm"
-                                                onClick={(e) => handleAction(e, app.id, 'restart')}
-                                                disabled={actionLoading === `${app.id}-restart`}
-                                                title="Restart"
-                                            >
-                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                                    <polyline points="23 4 23 10 17 10"/>
-                                                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
-                                                </svg>
-                                            </button>
+                                            <>
+                                                <button
+                                                    className="btn btn-ghost btn-sm"
+                                                    onClick={(e) => handleAction(e, app.id, 'restart')}
+                                                    disabled={actionLoading === `${app.id}-restart`}
+                                                    title="Restart"
+                                                >
+                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                        <polyline points="23 4 23 10 17 10"/>
+                                                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                                                    </svg>
+                                                </button>
+                                                <button
+                                                    className="btn btn-ghost btn-sm"
+                                                    onClick={(e) => handleAction(e, app.id, 'stop')}
+                                                    disabled={actionLoading === `${app.id}-stop`}
+                                                    title="Stop"
+                                                >
+                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                                                        <rect x="6" y="6" width="12" height="12" rx="1"/>
+                                                    </svg>
+                                                </button>
+                                            </>
                                         ) : (
                                             <button
                                                 className="btn btn-ghost btn-sm"

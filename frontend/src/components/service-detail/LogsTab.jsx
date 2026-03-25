@@ -1,66 +1,221 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import api from '../../services/api';
 
+const LOG_LEVELS = ['all', 'error', 'warn', 'info', 'debug'];
+
 const LogsTab = ({ app }) => {
-    const [logs, setLogs] = useState('');
+    const [rawLogs, setRawLogs] = useState('');
     const [loading, setLoading] = useState(true);
     const [autoRefresh, setAutoRefresh] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [levelFilter, setLevelFilter] = useState('all');
+    const [lineCount, setLineCount] = useState(200);
+    const [autoScroll, setAutoScroll] = useState(true);
+    const logRef = useRef(null);
 
     const isDockerApp = app.app_type === 'docker';
     const isPythonApp = ['flask', 'django'].includes(app.app_type);
 
     useEffect(() => {
         loadLogs();
-    }, [app.id]);
+    }, [app.id, lineCount]);
 
     useEffect(() => {
         if (!autoRefresh) return;
         const interval = setInterval(loadLogs, 5000);
         return () => clearInterval(interval);
-    }, [autoRefresh, app.id]);
+    }, [autoRefresh, app.id, lineCount]);
+
+    useEffect(() => {
+        if (autoScroll && logRef.current) {
+            logRef.current.scrollTop = logRef.current.scrollHeight;
+        }
+    }, [rawLogs, autoScroll]);
 
     async function loadLogs() {
         try {
             let data;
             if (isDockerApp) {
-                data = await api.getDockerAppLogs(app.id, 200);
+                data = await api.getDockerAppLogs(app.id, lineCount);
             } else if (isPythonApp) {
-                data = await api.getPythonAppLogs(app.id, 200);
+                data = await api.getPythonAppLogs(app.id, lineCount);
             } else {
                 data = { logs: 'Logs not available for this app type.' };
             }
-            setLogs(data.logs || 'No logs available');
+            setRawLogs(data.logs || 'No logs available');
         } catch (err) {
             console.error('Failed to load logs:', err);
-            setLogs('Failed to load logs');
+            setRawLogs('Failed to load logs');
         } finally {
             setLoading(false);
         }
     }
 
+    const filteredLines = useMemo(() => {
+        if (!rawLogs) return [];
+        let lines = rawLogs.split('\n');
+
+        // Level filter
+        if (levelFilter !== 'all') {
+            lines = lines.filter(line => {
+                const lower = line.toLowerCase();
+                if (levelFilter === 'error') return lower.includes('error') || lower.includes('critical') || lower.includes('fatal');
+                if (levelFilter === 'warn') return lower.includes('warn');
+                if (levelFilter === 'info') return lower.includes('info');
+                if (levelFilter === 'debug') return lower.includes('debug');
+                return true;
+            });
+        }
+
+        // Search filter
+        if (searchTerm) {
+            const term = searchTerm.toLowerCase();
+            lines = lines.filter(line => line.toLowerCase().includes(term));
+        }
+
+        return lines;
+    }, [rawLogs, searchTerm, levelFilter]);
+
+    function getLineClass(line) {
+        const lower = line.toLowerCase();
+        if (lower.includes('error') || lower.includes('critical') || lower.includes('fatal')) return 'logs-viewer__line--error';
+        if (lower.includes('warn')) return 'logs-viewer__line--warn';
+        if (lower.includes('debug') || lower.includes('trace')) return 'logs-viewer__line--debug';
+        return '';
+    }
+
+    function handleDownload() {
+        const blob = new Blob([rawLogs], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${app.name}-logs-${new Date().toISOString().slice(0, 10)}.txt`;
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    function handleCopy() {
+        navigator.clipboard.writeText(rawLogs);
+    }
+
+    const matchCount = searchTerm ? filteredLines.length : null;
+
     return (
-        <div className="logs-tab">
-            <div className="logs-header">
-                <h3>Application Logs</h3>
-                <div className="logs-controls">
-                    {isPythonApp && <span className="hint">Gunicorn/systemd Logs</span>}
-                    {isDockerApp && <span className="hint">Docker Compose Logs</span>}
-                    <label className="checkbox-inline">
+        <div className="logs-tab-v2">
+            {/* Toolbar */}
+            <div className="logs-toolbar">
+                <div className="logs-toolbar__left">
+                    <div className="logs-toolbar__search">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <circle cx="11" cy="11" r="8"/>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                        </svg>
                         <input
-                            type="checkbox"
-                            checked={autoRefresh}
-                            onChange={(e) => setAutoRefresh(e.target.checked)}
+                            type="text"
+                            placeholder="Search logs..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
                         />
-                        Auto-refresh
+                        {matchCount !== null && (
+                            <span className="logs-toolbar__match-count">{matchCount} matches</span>
+                        )}
+                    </div>
+                    <select
+                        className="logs-toolbar__select"
+                        value={levelFilter}
+                        onChange={(e) => setLevelFilter(e.target.value)}
+                    >
+                        {LOG_LEVELS.map(l => (
+                            <option key={l} value={l}>
+                                {l === 'all' ? 'All Levels' : l.charAt(0).toUpperCase() + l.slice(1)}
+                            </option>
+                        ))}
+                    </select>
+                    <select
+                        className="logs-toolbar__select"
+                        value={lineCount}
+                        onChange={(e) => setLineCount(Number(e.target.value))}
+                    >
+                        <option value={100}>100 lines</option>
+                        <option value={200}>200 lines</option>
+                        <option value={500}>500 lines</option>
+                        <option value={1000}>1000 lines</option>
+                    </select>
+                </div>
+                <div className="logs-toolbar__right">
+                    <label className="logs-toolbar__toggle">
+                        <input type="checkbox" checked={autoScroll} onChange={(e) => setAutoScroll(e.target.checked)} />
+                        <span>Auto-scroll</span>
                     </label>
-                    <button className="btn btn-secondary btn-sm" onClick={loadLogs}>
-                        Refresh
+                    <label className="logs-toolbar__toggle">
+                        <input type="checkbox" checked={autoRefresh} onChange={(e) => setAutoRefresh(e.target.checked)} />
+                        <span>Live</span>
+                    </label>
+                    <div className="logs-toolbar__divider" />
+                    <button className="btn btn-ghost btn-sm" onClick={handleCopy} title="Copy logs">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                        </svg>
+                    </button>
+                    <button className="btn btn-ghost btn-sm" onClick={handleDownload} title="Download logs">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="7 10 12 15 17 10"/>
+                            <line x1="12" y1="15" x2="12" y2="3"/>
+                        </svg>
+                    </button>
+                    <button className="btn btn-ghost btn-sm" onClick={loadLogs} title="Refresh">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <polyline points="23 4 23 10 17 10"/>
+                            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                        </svg>
                     </button>
                 </div>
             </div>
-            <pre className="log-viewer">{loading ? 'Loading...' : logs}</pre>
+
+            {/* Log Source Hint */}
+            <div className="logs-source-hint">
+                {isPythonApp && 'Gunicorn / systemd logs'}
+                {isDockerApp && 'Docker Compose logs'}
+                {!isPythonApp && !isDockerApp && 'Application logs'}
+                {autoRefresh && <span className="logs-source-hint__live">LIVE</span>}
+            </div>
+
+            {/* Log Viewer */}
+            <div className="logs-viewer" ref={logRef}>
+                {loading ? (
+                    <div className="logs-viewer__loading">Loading logs...</div>
+                ) : filteredLines.length === 0 ? (
+                    <div className="logs-viewer__empty">
+                        {searchTerm || levelFilter !== 'all'
+                            ? 'No log lines match your filters.'
+                            : 'No logs available.'}
+                    </div>
+                ) : (
+                    filteredLines.map((line, i) => (
+                        <div key={i} className={`logs-viewer__line ${getLineClass(line)}`}>
+                            <span className="logs-viewer__line-num">{i + 1}</span>
+                            <span className="logs-viewer__line-text">
+                                {searchTerm ? highlightSearch(line, searchTerm) : line}
+                            </span>
+                        </div>
+                    ))
+                )}
+            </div>
         </div>
     );
 };
+
+function highlightSearch(text, term) {
+    if (!term) return text;
+    const regex = new RegExp(`(${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    const parts = text.split(regex);
+    return parts.map((part, i) =>
+        regex.test(part)
+            ? <mark key={i} className="logs-viewer__highlight">{part}</mark>
+            : part
+    );
+}
 
 export default LogsTab;

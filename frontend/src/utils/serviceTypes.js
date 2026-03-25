@@ -5,7 +5,7 @@ const SERVICE_TYPES = {
         bgColor: 'rgba(36, 150, 237, 0.1)',
         borderColor: 'rgba(36, 150, 237, 0.2)',
         icon: 'docker',
-        tabs: ['events', 'logs', 'environment', 'shell', 'metrics', 'settings'],
+        tabs: ['overview', 'events', 'logs', 'environment', 'shell', 'metrics', 'settings'],
     },
     flask: {
         label: 'Flask',
@@ -13,7 +13,7 @@ const SERVICE_TYPES = {
         bgColor: 'rgba(252, 211, 77, 0.1)',
         borderColor: 'rgba(252, 211, 77, 0.2)',
         icon: 'flask',
-        tabs: ['events', 'logs', 'environment', 'packages', 'gunicorn', 'commands', 'metrics', 'settings'],
+        tabs: ['overview', 'events', 'logs', 'environment', 'packages', 'gunicorn', 'commands', 'metrics', 'settings'],
     },
     django: {
         label: 'Django',
@@ -21,7 +21,7 @@ const SERVICE_TYPES = {
         bgColor: 'rgba(52, 211, 153, 0.1)',
         borderColor: 'rgba(52, 211, 153, 0.2)',
         icon: 'django',
-        tabs: ['events', 'logs', 'environment', 'packages', 'gunicorn', 'commands', 'metrics', 'settings'],
+        tabs: ['overview', 'events', 'logs', 'environment', 'packages', 'gunicorn', 'commands', 'metrics', 'settings'],
     },
     php: {
         label: 'PHP',
@@ -29,7 +29,7 @@ const SERVICE_TYPES = {
         bgColor: 'rgba(119, 123, 180, 0.1)',
         borderColor: 'rgba(119, 123, 180, 0.2)',
         icon: 'php',
-        tabs: ['events', 'logs', 'environment', 'settings'],
+        tabs: ['overview', 'events', 'logs', 'environment', 'settings'],
     },
     static: {
         label: 'Static',
@@ -37,7 +37,7 @@ const SERVICE_TYPES = {
         bgColor: 'rgba(96, 165, 250, 0.1)',
         borderColor: 'rgba(96, 165, 250, 0.2)',
         icon: 'static',
-        tabs: ['events', 'environment', 'settings'],
+        tabs: ['overview', 'events', 'environment', 'settings'],
     },
     wordpress: {
         label: 'WordPress',
@@ -45,7 +45,7 @@ const SERVICE_TYPES = {
         bgColor: 'rgba(33, 117, 155, 0.1)',
         borderColor: 'rgba(33, 117, 155, 0.2)',
         icon: 'wordpress',
-        tabs: ['events', 'logs', 'environment', 'settings'],
+        tabs: ['overview', 'events', 'logs', 'environment', 'settings'],
     },
 };
 
@@ -72,7 +72,7 @@ export function getServiceType(appType) {
         bgColor: 'rgba(161, 161, 170, 0.1)',
         borderColor: 'rgba(161, 161, 170, 0.2)',
         icon: 'default',
-        tabs: ['events', 'logs', 'environment', 'settings'],
+        tabs: ['overview', 'events', 'logs', 'environment', 'settings'],
     };
 }
 

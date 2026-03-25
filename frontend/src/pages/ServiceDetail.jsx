@@ -15,8 +15,10 @@ import PackagesTab from '../components/service-detail/PackagesTab';
 import GunicornTab from '../components/service-detail/GunicornTab';
 import CommandsTab from '../components/service-detail/CommandsTab';
 import GitConnectModal from '../components/service-detail/GitConnectModal';
+import OverviewTab from '../components/service-detail/OverviewTab';
 
 const TAB_LABELS = {
+    overview: 'Overview',
     events: 'Events',
     logs: 'Logs',
     environment: 'Environment',
@@ -34,7 +36,7 @@ const ServiceDetail = () => {
     const toast = useToast();
     const { confirm, confirmState, handleConfirm, handleCancel } = useConfirm();
     const { service, deployConfig, loading, error, reload, performAction, deleteService } = useService(id);
-    const [activeTab, setActiveTab] = useState('events');
+    const [activeTab, setActiveTab] = useState('overview');
     const [showDeployMenu, setShowDeployMenu] = useState(false);
     const [showMoreMenu, setShowMoreMenu] = useState(false);
     const [showGitModal, setShowGitModal] = useState(false);
@@ -309,6 +311,7 @@ const ServiceDetail = () => {
 
             {/* Tab Content */}
             <div className="svc-detail__content">
+                {activeTab === 'overview' && <OverviewTab app={service} deployConfig={deployConfig} />}
                 {activeTab === 'events' && <EventsTab appId={service.id} />}
                 {activeTab === 'logs' && <LogsTab app={service} />}
                 {activeTab === 'environment' && <EnvironmentVariables appId={service.id} />}
