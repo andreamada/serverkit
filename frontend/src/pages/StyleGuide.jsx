@@ -38,7 +38,7 @@ export default function StyleGuide() {
         { id: 'tabs', label: 'Tabs', icon: ChevronRight },
         { id: 'lists', label: 'Lists & Info', icon: Database },
         { id: 'feedback', label: 'Feedback & Loading', icon: Activity },
-        { id: 'empty', label: 'Empty States', icon: Inbox },
+        { id: 'empty', label: 'States', icon: Inbox },
         { id: 'pageheaders', label: 'Page Headers', icon: FileText },
         { id: 'patterns', label: 'Page Patterns', icon: Monitor },
         { id: 'utilities', label: 'Utilities', icon: Zap },
@@ -848,19 +848,17 @@ export default function StyleGuide() {
                             </div>
                         </div>
 
-                        <SectionTitle title="Loading States" />
-                        <div className="card" style={{ padding: 24 }}>
-                            <p className="text-sm text-tertiary mb-2">Standard: .loading class</p>
-                            <div className="loading" style={{ position: 'relative', minHeight: 60 }}>Loading services...</div>
-                        </div>
+                        <SectionTitle title="Spinner Sizes (standalone)" />
+                        <p className="text-sm text-tertiary mb-2">Use Spinner directly only inside buttons or inline indicators.</p>
                     </div>
                 )}
 
-                {/* ── EMPTY STATES ── */}
+                {/* ── EMPTY, LOADING & UNAVAILABLE STATES ── */}
                 {activeSection === 'empty' && (
                     <div className="space-y-6">
-                        <SectionTitle title="EmptyState Component (Standard)" />
-                        <p className="text-secondary text-sm mb-2">Use this for all empty states. Import from components/EmptyState.</p>
+                        <p className="text-secondary text-sm">One component for everything: empty, loading, not-installed, unavailable. Import EmptyState from components/EmptyState.</p>
+
+                        <SectionTitle title="Default (No Data)" />
                         <EmptyState />
 
                         <SectionTitle title="With Icon, Title, Description, Action" />
@@ -871,6 +869,10 @@ export default function StyleGuide() {
                             action={<button className="btn btn-primary"><Plus size={16} /> Add Server</button>}
                         />
 
+                        <SectionTitle title="Loading State" />
+                        <p className="text-sm text-tertiary mb-2">Pass loading=true. Same component, spinner instead of icon.</p>
+                        <EmptyState loading title="Loading services..." />
+
                         <SectionTitle title="Search Empty" />
                         <EmptyState
                             icon={Search}
@@ -878,14 +880,49 @@ export default function StyleGuide() {
                             description="Try adjusting your search or filter criteria."
                         />
 
-                        <SectionTitle title="Different Contexts" />
+                        <SectionTitle title='Large — Not Installed (size="lg")' />
+                        <p className="text-sm text-tertiary mb-2">Full-page state for Git, Docker, FTP when not installed.</p>
+                        <EmptyState
+                            size="lg"
+                            icon={GitBranch}
+                            title="No Git Server Installed"
+                            description="Install Gitea to host and manage your Git repositories locally."
+                            action={<button className="btn btn-primary btn-lg"><Download size={16} /> Install Git Server</button>}
+                        />
+
+                        <SectionTitle title='Large — Unavailable (size="lg")' />
+                        <EmptyState
+                            size="lg"
+                            icon={WifiOff}
+                            title="Docker Not Available"
+                            description="Docker is not installed or not running on this system."
+                            action={<button className="btn btn-primary"><RefreshCw size={16} /> Retry Connection</button>}
+                        />
+
+                        <SectionTitle title="Large — Loading" />
+                        <EmptyState size="lg" loading title="Loading services..." />
+
+                        <SectionTitle title="Inside a Card (e.g. empty table)" />
+                        <div className="card" style={{ padding: 24 }}>
+                            <div className="card-header">
+                                <h3>Scan History</h3>
+                                <button className="btn btn-sm btn-secondary">Refresh</button>
+                            </div>
+                            <div className="card-body">
+                                <EmptyState
+                                    icon={Search}
+                                    title="No scans yet"
+                                    description="Start a scan above to check for threats."
+                                />
+                            </div>
+                        </div>
+
+                        <SectionTitle title="Context Grid" />
                         <div className="grid grid-cols-2 gap-4">
                             <EmptyState icon={Database} title="No databases" description="Create your first database." action={<button className="btn btn-primary btn-sm"><Plus size={14} /> Create</button>} />
                             <EmptyState icon={Globe} title="No domains configured" description="Add a domain to get started." action={<button className="btn btn-primary btn-sm"><Plus size={14} /> Add Domain</button>} />
                             <EmptyState icon={Key} title="No SSH keys" description="Add an SSH key for secure access." action={<button className="btn btn-primary btn-sm"><Plus size={14} /> Add Key</button>} />
-                            <EmptyState icon={GitBranch} title="No Git server installed" description="Install Gitea to host repositories." action={<button className="btn btn-primary btn-sm"><Download size={14} /> Install</button>} />
-                            <EmptyState icon={Package} title="No Docker containers" description="Docker is not installed on this system." action={<button className="btn btn-primary btn-sm"><RefreshCw size={14} /> Retry</button>} />
-                            <EmptyState icon={Shield} title="No scan history" description="Run a scan to check for threats." action={<button className="btn btn-primary btn-sm"><Activity size={14} /> Quick Scan</button>} />
+                            <EmptyState icon={Shield} title="No scan history" description="Run a scan to check for threats." action={<button className="btn btn-primary btn-sm"><Activity size={14} /> Scan</button>} />
                         </div>
                     </div>
                 )}
@@ -953,24 +990,6 @@ export default function StyleGuide() {
                 {/* ── PAGE PATTERNS ── */}
                 {activeSection === 'patterns' && (
                     <div className="space-y-6">
-                        <SectionTitle title="Not-Installed Page Pattern" />
-                        <p className="text-sm text-secondary mb-2">When a service is not installed (Git, Docker, FTP, etc.), show a centered empty state with install action.</p>
-                        <EmptyState
-                            icon={GitBranch}
-                            title="No Git Server Installed"
-                            description="Install Gitea to host and manage your Git repositories locally."
-                            action={<button className="btn btn-primary btn-lg"><Download size={16} /> Install Git Server</button>}
-                        />
-
-                        <SectionTitle title="Service Unavailable Pattern" />
-                        <p className="text-sm text-secondary mb-2">When a service exists but can't connect.</p>
-                        <EmptyState
-                            icon={WifiOff}
-                            title="Docker Not Available"
-                            description="Docker is not installed or not running on this system."
-                            action={<button className="btn btn-primary"><RefreshCw size={16} /> Retry Connection</button>}
-                        />
-
                         <SectionTitle title="Card + Table Pattern" />
                         <p className="text-sm text-secondary mb-2">Standard layout for tabular data inside a card.</p>
                         <div className="card" style={{ padding: 24 }}>
@@ -1031,15 +1050,6 @@ export default function StyleGuide() {
                                     <button className="btn btn-primary btn-sm">Start Scan</button>
                                 </div>
                             ))}
-                        </div>
-
-                        <SectionTitle title="Page Loading State" />
-                        <p className="text-sm text-secondary mb-2">Full-page loading with centered spinner.</p>
-                        <div className="card" style={{ padding: 48 }}>
-                            <div className="flex flex-col items-center gap-3">
-                                <Spinner size="lg" />
-                                <span className="text-tertiary">Loading services...</span>
-                            </div>
                         </div>
 
                         <SectionTitle title="Error Banner at Page Level" />
