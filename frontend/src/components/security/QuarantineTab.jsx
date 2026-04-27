@@ -1,0 +1,104 @@
+import React, { useState, useEffect } from 'react';
+import api from '../../services/api';
+
+const QuarantineTab = () => {
+    const [files, setFiles] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [message, setMessage] = useState(null);
+
+    useEffect(() => {
+        loadFiles();
+    }, []);
+
+    async function loadFiles() {
+        try {
+            const data = await api.getQuarantinedFiles();
+            setFiles(data.files || []);
+        } catch (err) {
+            console.error('Failed to load quarantined files:', err);
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    async function handleDelete(filename) {
+        if (!confirm(`Permanently delete ${filename}? This cannot be undone.`)) return;
+
+        try {
+            await api.deleteQuarantinedFile(filename);
+            setMessage({ type: 'success', text: 'File deleted' });
+            loadFiles();
+        } catch (err) {
+            setMessage({ type: 'error', text: err.message });
+        }
+    }
+
+    function formatBytes(bytes) {
+        if (!bytes) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    }
+
+    return (
+        <div className="quarantine-tab">
+            {message && (
+                <div className={`alert alert-${message.type === 'success' ? 'success' : 'danger'}`}>
+                    {message.text}
+                </div>
+            )}
+
+            <div className="card">
+                <div className="card-header">
+                    <h3>Quarantined Files</h3>
+                    <button className="btn btn-sm btn-secondary" onClick={loadFiles}>Refresh</button>
+                </div>
+                <div className="card-body">
+                    {loading ? (
+                        <div className="loading-sm">Loading...</div>
+                    ) : files.length === 0 ? (
+                        <div className="empty-state">
+                            <svg viewBox="0 0 24 24" width="48" height="48" stroke="currentColor" fill="none" strokeWidth="1">
+                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                                <polyline points="9 12 12 15 16 10"/>
+                            </svg>
+                            <p>No files in quarantine</p>
+                            <span className="text-muted">Infected files will appear here when detected</span>
+                        </div>
+                    ) : (
+                        <table className="table">
+                            <thead>
+                                <tr>
+                                    <th>Filename</th>
+                                    <th>Size</th>
+                                    <th>Quarantined</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {files.map((file, index) => (
+                                    <tr key={index}>
+                                        <td className="path-cell">{file.name}</td>
+                                        <td>{formatBytes(file.size)}</td>
+                                        <td>{new Date(file.quarantined_at).toLocaleString()}</td>
+                                        <td>
+                                            <button
+                                                className="btn btn-sm btn-danger"
+                                                onClick={() => handleDelete(file.name)}
+                                            >
+                                                Delete
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default QuarantineTab;

@@ -1,0 +1,314 @@
+import { useState, useEffect } from 'react';
+import api from '../../services/api';
+import ContributionGraph from './ContributionGraph';
+import { Search, Filter, X, ChevronRight, User as UserIcon, Activity as ActivityIcon, Terminal } from 'lucide-react';
+
+const ActivityTab = () => {
+    const [summary, setSummary] = useState(null);
+    const [logs, setLogs] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [feedLoading, setFeedLoading] = useState(false);
+    const [users, setUsers] = useState([]);
+    const [actions, setActions] = useState([]);
+    const [pagination, setPagination] = useState({
+        page: 1, perPage: 50, total: 0, pages: 1
+    });
+    const [filters, setFilters] = useState({ action: '', user_id: '' });
+
+    useEffect(() => {
+        loadSummary();
+        loadUsers();
+        loadActions();
+    }, []);
+
+    useEffect(() => {
+        loadLogs();
+    }, [pagination.page, filters]);
+
+    async function loadSummary() {
+        try {
+            const data = await api.getActivitySummary();
+            setSummary(data);
+        } catch {
+            // Silently handle
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    async function loadLogs() {
+        try {
+            setFeedLoading(true);
+            const params = {
+                page: pagination.page,
+                per_page: pagination.perPage
+            };
+            if (filters.action) params.action = filters.action;
+            if (filters.user_id) params.user_id = filters.user_id;
+
+            const data = await api.getAuditLogs(params);
+            setLogs(data.logs || []);
+            setPagination(prev => ({
+                ...prev,
+                total: data.pagination?.total || 0,
+                pages: data.pagination?.pages || 1
+            }));
+        } catch {
+            // Silently handle
+        } finally {
+            setFeedLoading(false);
+        }
+    }
+
+    async function loadUsers() {
+        try {
+            const data = await api.getUsers();
+            setUsers(data.users || []);
+        } catch { /* ignore */ }
+    }
+
+    async function loadActions() {
+        try {
+            const data = await api.getAuditLogActions();
+            setActions(data.actions || []);
+        } catch { /* ignore */ }
+    }
+
+    function handleFilterChange(name, value) {
+        setFilters(prev => ({ ...prev, [name]: value }));
+        setPagination(prev => ({ ...prev, page: 1 }));
+    }
+
+    function formatDate(dateString) {
+        if (!dateString) return '';
+        const date = new Date(dateString);
+        return date.toLocaleString('en-US', {
+            month: 'short', day: 'numeric',
+            hour: '2-digit', minute: '2-digit'
+        });
+    }
+
+    function getActionIcon(action) {
+        if (action.includes('login')) {
+            return <UserIcon size={16} />;
+        }
+        if (action.includes('app') || action.includes('deploy')) {
+            return <Terminal size={16} />;
+        }
+        if (action.includes('setting')) {
+            return <ActivityIcon size={16} />;
+        }
+        return <ChevronRight size={16} />;
+    }
+
+    function getActionClass(action) {
+        if (action?.includes('failed') || action?.includes('delete') || action?.includes('revoke')) return 'action-danger';
+        if (action?.includes('create') || action?.includes('enable') || action?.includes('login') || action?.includes('accept')) return 'action-success';
+        if (action?.includes('update') || action?.includes('disable')) return 'action-warning';
+        return 'action-info';
+    }
+
+    function formatActionName(action) {
+        return action.replace(/\./g, ' ').replace(/_/g, ' ');
+    }
+
+    function renderDetails(details) {
+        if (!details || Object.keys(details).length === 0) return null;
+        return (
+            <div className="log-details">
+                {Object.entries(details).map(([key, value]) => (
+                    <span key={key} className="detail-item">
+                        <span className="detail-key">{key}</span>
+                        <span className="detail-value">
+                            {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                        </span>
+                    </span>
+                ))}
+            </div>
+        );
+    }
+
+    if (loading) {
+        return <div className="activity-tab"><div className="loading-state">Loading activity...</div></div>;
+    }
+
+    const maxCount = summary?.top_users?.length
+        ? Math.max(...summary.top_users.map(u => u.action_count))
+        : 1;
+
+    return (
+        <div className="activity-tab">
+            <div className="tab-header">
+                <div className="tab-header-content">
+                    <h3>Activity Dashboard</h3>
+                    <p>Monitor team activity, audit actions, and system events</p>
+                </div>
+            </div>
+
+            {summary && (
+                <>
+                    <div className="activity-summary">
+                        <div className="activity-stat-card">
+                            <span className="stat-label">Active Users Today</span>
+                            <span className="stat-number">{summary.active_users_today}</span>
+                        </div>
+                        <div className="activity-stat-card">
+                            <span className="stat-label">Actions This Week</span>
+                            <span className="stat-number">{summary.actions_this_week}</span>
+                        </div>
+                        <div className="activity-stat-card">
+                            <span className="stat-label">Total Users</span>
+                            <span className="stat-number">{summary.total_users}</span>
+                        </div>
+                    </div>
+
+                    <div className="graphs-section">
+                        <ContributionGraph
+                            data={summary.daily_counts}
+                            title="Overall System Activity"
+                        />
+                        {summary.top_user_daily && summary.top_user_daily.length > 0 && summary.top_users?.length > 1 && (
+                            <ContributionGraph
+                                data={summary.top_user_daily}
+                                title="Most Active User Activity"
+                                username={summary.top_users[0]?.username}
+                            />
+                        )}
+                    </div>
+
+                    {summary.top_users && summary.top_users.length > 0 && (
+                        <div className="most-active-users">
+                            <h4>Most Active Users (This Week)</h4>
+                            <div className="active-users-list">
+                                {summary.top_users.map((u, i) => (
+                                    <div key={u.user_id} className="active-user-item">
+                                        <span className="active-user-rank">{i + 1}</span>
+                                        <div className="active-user-info">
+                                            <span className="active-user-name">{u.username}</span>
+                                            <div className="active-user-bar-wrapper">
+                                                <div
+                                                    className="active-user-bar"
+                                                    style={{ width: `${(u.action_count / maxCount) * 100}%` }}
+                                                />
+                                            </div>
+                                        </div>
+                                        <span className="active-user-count">{u.action_count} actions</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </>
+            )}
+
+            <div className="activity-feed-section">
+                <div className="section-header">
+                    <h4>Audit Log</h4>
+                </div>
+                
+                <div className="filters-bar">
+                    <div className="filter-group">
+                        <label><Filter size={12} /> Action Type</label>
+                        <select
+                            className="form-control"
+                            value={filters.action}
+                            onChange={e => handleFilterChange('action', e.target.value)}
+                        >
+                            <option value="">All Actions</option>
+                            {actions.map(action => (
+                                <option key={action} value={action}>{formatActionName(action)}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="filter-group">
+                        <label><UserIcon size={12} /> User</label>
+                        <select
+                            className="form-control"
+                            value={filters.user_id}
+                            onChange={e => handleFilterChange('user_id', e.target.value)}
+                        >
+                            <option value="">All Users</option>
+                            {users.map(u => (
+                                <option key={u.id} value={u.id}>{u.username}</option>
+                            ))}
+                        </select>
+                    </div>
+                    {(filters.action || filters.user_id) && (
+                        <button className="btn btn-ghost btn-sm btn-clear" onClick={() => {
+                            setFilters({ action: '', user_id: '' });
+                            setPagination(prev => ({ ...prev, page: 1 }));
+                        }}>
+                            <X size={14} /> Clear
+                        </button>
+                    )}
+                </div>
+
+                {feedLoading ? (
+                    <div className="loading-state">
+                        <div className="spinner" />
+                        Loading logs...
+                    </div>
+                ) : logs.length === 0 ? (
+                    <div className="empty-state">
+                        <Search size={40} />
+                        <p>No audit logs found</p>
+                    </div>
+                ) : (
+                    <div className="audit-log-list">
+                        {logs.map(log => (
+                            <div key={log.id} className={`log-entry ${getActionClass(log.action)}`}>
+                                <div className="log-icon">
+                                    {getActionIcon(log.action)}
+                                </div>
+                                <div className="log-content">
+                                    <div className="log-header">
+                                        <span className="log-action">{formatActionName(log.action)}</span>
+                                        <span className="log-user">
+                                            {log.username || 'System'}
+                                        </span>
+                                        {log.target_type && (
+                                            <span className="log-target">
+                                                on {log.target_type} {log.target_id ? `#${log.target_id}` : ''}
+                                            </span>
+                                        )}
+                                        <span className="log-time">{formatDate(log.created_at)}</span>
+                                    </div>
+                                    {renderDetails(log.details)}
+                                    {log.ip_address && (
+                                        <div className="log-meta">
+                                            <span className="log-ip">{log.ip_address}</span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {pagination.pages > 1 && (
+                    <div className="pagination">
+                        <button
+                            className="btn btn-sm btn-outline"
+                            disabled={pagination.page <= 1}
+                            onClick={() => setPagination(prev => ({ ...prev, page: prev.page - 1 }))}
+                        >
+                            Previous
+                        </button>
+                        <span className="pagination-info">
+                            Page {pagination.page} of {pagination.pages}
+                        </span>
+                        <button
+                            className="btn btn-sm btn-outline"
+                            disabled={pagination.page >= pagination.pages}
+                            onClick={() => setPagination(prev => ({ ...prev, page: prev.page + 1 }))}
+                        >
+                            Next
+                        </button>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
+export default ActivityTab;

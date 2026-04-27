@@ -1,0 +1,168 @@
+name: Test System Utilities
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - 'backend/app/utils/system.py'
+      - 'backend/app/services/**'
+      - 'backend/tests/test_utils_system*.py'
+      - '.github/workflows/test-system-utils.yml'
+  pull_request:
+    branches: [main, dev]
+    paths:
+      - 'backend/app/utils/system.py'
+      - 'backend/app/services/**'
+      - 'backend/tests/test_utils_system*.py'
+
+jobs:
+  # ──────────────────────────────────────────────────────────────────
+  # Job 1: Mocked unit tests — fast, validates all logic
+  # ──────────────────────────────────────────────────────────────────
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install test deps
+        run: pip install pytest
+
+      - name: Run unit tests
+        working-directory: backend
+        run: python -m pytest tests/test_utils_system.py -v
+
+  # ──────────────────────────────────────────────────────────────────
+  # Job 2: Integration tests on real distros (no mocks)
+  # ──────────────────────────────────────────────────────────────────
+  integration-tests:
+    name: Integration (${{ matrix.distro }})
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - distro: ubuntu
+            image: ubuntu:24.04
+            expected_manager: apt
+          - distro: debian
+            image: debian:12
+            expected_manager: apt
+          - distro: fedora
+            image: fedora:41
+            expected_manager: dnf
+          - distro: rocky
+            image: rockylinux:9
+            expected_manager: dnf
+
+    container:
+      image: ${{ matrix.image }}
+
+    env:
+      DEBIAN_FRONTEND: noninteractive
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Python & pytest
+        shell: bash
+        run: |
+          if command -v apt-get >/dev/null 2>&1; then
+            rm -rf /var/lib/apt/lists/*
+            apt-get update
+            apt-get install -y python3 python3-pip
+          elif command -v dnf >/dev/null 2>&1; then
+            dnf install -y python3 python3-pip
+          elif command -v yum >/dev/null 2>&1; then
+            yum install -y python3 python3-pip
+          fi
+          pip3 install --break-system-packages pytest 2>/dev/null || pip3 install pytest
+
+      - name: Run integration smoke tests
+        working-directory: backend
+        env:
+          EXPECTED_MANAGER: ${{ matrix.expected_manager }}
+        run: python3 -m pytest tests/test_utils_system_integration.py -v
+
+  # ──────────────────────────────────────────────────────────────────
+  # Job 3: Audit — grep for raw subprocess patterns in services
+  # ──────────────────────────────────────────────────────────────────
+  audit-raw-patterns:
+    name: Audit Raw Subprocess Patterns
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check for raw 'sudo systemctl' calls in migrated services
+        run: |
+          MIGRATED_FILES=(
+            backend/app/services/firewall_service.py
+            backend/app/services/security_service.py
+            backend/app/services/python_service.py
+            backend/app/services/deployment_service.py
+            backend/app/services/ftp_service.py
+            backend/app/services/nginx_service.py
+            backend/app/services/php_service.py
+            backend/app/services/ssl_service.py
+          )
+
+          EXIT_CODE=0
+
+          echo "=== Checking for raw subprocess patterns ==="
+          echo ""
+
+          # Pattern 1: subprocess.run with 'sudo', 'systemctl'
+          echo "--- Pattern: 'sudo', 'systemctl' ---"
+          for f in "${MIGRATED_FILES[@]}"; do
+            if [ -f "$f" ]; then
+              MATCHES=$(grep -n "'sudo', 'systemctl'" "$f" || true)
+              if [ -n "$MATCHES" ]; then
+                echo "FAIL: $f"
+                echo "$MATCHES"
+                EXIT_CODE=1
+              fi
+            fi
+          done
+
+          # Pattern 2: subprocess.run with dpkg
+          echo ""
+          echo "--- Pattern: subprocess.run.*dpkg ---"
+          for f in "${MIGRATED_FILES[@]}"; do
+            if [ -f "$f" ]; then
+              MATCHES=$(grep -n "subprocess\.run.*dpkg" "$f" || true)
+              if [ -n "$MATCHES" ]; then
+                echo "FAIL: $f"
+                echo "$MATCHES"
+                EXIT_CODE=1
+              fi
+            fi
+          done
+
+          # Pattern 3: os.path.exists('/usr/bin/apt')
+          echo ""
+          echo "--- Pattern: os.path.exists('/usr/bin/apt') ---"
+          for f in "${MIGRATED_FILES[@]}"; do
+            if [ -f "$f" ]; then
+              MATCHES=$(grep -n "os\.path\.exists.*'/usr/bin/apt'" "$f" || true)
+              if [ -n "$MATCHES" ]; then
+                echo "FAIL: $f"
+                echo "$MATCHES"
+                EXIT_CODE=1
+              fi
+            fi
+          done
+
+          echo ""
+          if [ $EXIT_CODE -eq 0 ]; then
+            echo "All migrated files are clean."
+          else
+            echo "Raw subprocess patterns found — see failures above."
+          fi
+          exit $EXIT_CODE

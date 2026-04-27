@@ -1,0 +1,227 @@
+import hashlib
+import logging
+import secrets
+import re
+from datetime import datetime
+from app import db
+from app.models.workspace import Workspace, WorkspaceMember, WorkspaceApiKey
+from app.models.user import User
+
+logger = logging.getLogger(__name__)
+
+
+class WorkspaceService:
+    """Service for multi-tenancy workspace management."""
+
+    @staticmethod
+    def _slugify(name):
+        slug = re.sub(r'[^a-z0-9]+', '-', name.lower()).strip('-')
+        return slug or 'workspace'
+
+    @staticmethod
+    def list_workspaces(user_id=None, include_archived=False):
+        query = Workspace.query
+        if not include_archived:
+            query = query.filter_by(status=Workspace.STATUS_ACTIVE)
+        if user_id:
+            member_ws_ids = db.session.query(WorkspaceMember.workspace_id).filter_by(user_id=user_id)
+            query = query.filter(Workspace.id.in_(member_ws_ids))
+        return query.order_by(Workspace.name).all()
+
+    @staticmethod
+    def get_workspace(workspace_id):
+        return Workspace.query.get(workspace_id)
+
+    @staticmethod
+    def get_workspace_by_slug(slug):
+        return Workspace.query.filter_by(slug=slug).first()
+
+    @staticmethod
+    def create_workspace(data, user_id):
+        name = data.get('name', '').strip()
+        if not name:
+            raise ValueError('Workspace name required')
+
+        slug = WorkspaceService._slugify(name)
+        # Ensure unique slug
+        base_slug = slug
+        counter = 1
+        while Workspace.query.filter_by(slug=slug).first():
+            slug = f'{base_slug}-{counter}'
+            counter += 1
+
+        workspace = Workspace(
+            name=name,
+            slug=slug,
+            description=data.get('description', ''),
+            logo_url=data.get('logo_url'),
+            primary_color=data.get('primary_color'),
+            max_servers=data.get('max_servers', 0),
+            max_users=data.get('max_users', 0),
+            max_api_calls=data.get('max_api_calls', 0),
+            created_by=user_id,
+        )
+        if 'settings' in data:
+            workspace.settings = data['settings']
+
+        db.session.add(workspace)
+        db.session.flush()
+
+        # Creator becomes owner
+        member = WorkspaceMember(
+            workspace_id=workspace.id,
+            user_id=user_id,
+            role=WorkspaceMember.ROLE_OWNER,
+        )
+        db.session.add(member)
+        db.session.commit()
+        return workspace
+
+    @staticmethod
+    def update_workspace(workspace_id, data):
+        ws = Workspace.query.get(workspace_id)
+        if not ws:
+            return None
+        for field in ['name', 'description', 'logo_url', 'primary_color',
+                      'max_servers', 'max_users', 'max_api_calls', 'billing_notes']:
+            if field in data:
+                setattr(ws, field, data[field])
+        if 'settings' in data:
+            ws.settings = data['settings']
+        db.session.commit()
+        return ws
+
+    @staticmethod
+    def archive_workspace(workspace_id):
+        ws = Workspace.query.get(workspace_id)
+        if not ws:
+            return None
+        ws.status = Workspace.STATUS_ARCHIVED
+        db.session.commit()
+        return ws
+
+    @staticmethod
+    def restore_workspace(workspace_id):
+        ws = Workspace.query.get(workspace_id)
+        if not ws:
+            return None
+        ws.status = Workspace.STATUS_ACTIVE
+        db.session.commit()
+        return ws
+
+    @staticmethod
+    def delete_workspace(workspace_id):
+        ws = Workspace.query.get(workspace_id)
+        if not ws:
+            return False
+        WorkspaceApiKey.query.filter_by(workspace_id=workspace_id).delete()
+        WorkspaceMember.query.filter_by(workspace_id=workspace_id).delete()
+        db.session.delete(ws)
+        db.session.commit()
+        return True
+
+    # --- Members ---
+
+    @staticmethod
+    def get_members(workspace_id):
+        return WorkspaceMember.query.filter_by(workspace_id=workspace_id).all()
+
+    @staticmethod
+    def add_member(workspace_id, user_id, role='member'):
+        ws = Workspace.query.get(workspace_id)
+        if not ws:
+            raise ValueError('Workspace not found')
+
+        # Quota check
+        if ws.max_users > 0 and ws.members.count() >= ws.max_users:
+            raise ValueError('Workspace user limit reached')
+
+        existing = WorkspaceMember.query.filter_by(
+            workspace_id=workspace_id, user_id=user_id
+        ).first()
+        if existing:
+            raise ValueError('User already a member')
+
+        member = WorkspaceMember(
+            workspace_id=workspace_id,
+            user_id=user_id,
+            role=role,
+        )
+        db.session.add(member)
+        db.session.commit()
+        return member
+
+    @staticmethod
+    def update_member_role(member_id, role):
+        member = WorkspaceMember.query.get(member_id)
+        if not member:
+            return None
+        member.role = role
+        db.session.commit()
+        return member
+
+    @staticmethod
+    def remove_member(member_id):
+        member = WorkspaceMember.query.get(member_id)
+        if not member:
+            return False
+        if member.role == WorkspaceMember.ROLE_OWNER:
+            # Ensure at least one owner remains
+            owner_count = WorkspaceMember.query.filter_by(
+                workspace_id=member.workspace_id, role=WorkspaceMember.ROLE_OWNER
+            ).count()
+            if owner_count <= 1:
+                raise ValueError('Cannot remove the last owner')
+        db.session.delete(member)
+        db.session.commit()
+        return True
+
+    @staticmethod
+    def get_user_role(workspace_id, user_id):
+        member = WorkspaceMember.query.filter_by(
+            workspace_id=workspace_id, user_id=user_id
+        ).first()
+        return member.role if member else None
+
+    # --- API Keys ---
+
+    @staticmethod
+    def create_api_key(workspace_id, name, scopes=None, user_id=None):
+        raw_key = f'wsk_{secrets.token_urlsafe(32)}'
+        key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
+
+        api_key = WorkspaceApiKey(
+            workspace_id=workspace_id,
+            name=name,
+            key_hash=key_hash,
+            key_prefix=raw_key[:12],
+            created_by=user_id,
+        )
+        if scopes:
+            api_key.scopes = scopes
+        db.session.add(api_key)
+        db.session.commit()
+        return api_key, raw_key
+
+    @staticmethod
+    def list_api_keys(workspace_id):
+        return WorkspaceApiKey.query.filter_by(workspace_id=workspace_id).all()
+
+    @staticmethod
+    def revoke_api_key(key_id):
+        key = WorkspaceApiKey.query.get(key_id)
+        if not key:
+            return False
+        key.is_active = False
+        db.session.commit()
+        return True
+
+    @staticmethod
+    def get_all_workspaces_admin():
+        """Super-admin: see all workspaces with usage info."""
+        workspaces = Workspace.query.order_by(Workspace.name).all()
+        return [{
+            **ws.to_dict(),
+            'member_count': ws.members.count(),
+            'api_key_count': ws.api_keys.filter_by(is_active=True).count(),
+        } for ws in workspaces]

@@ -1,0 +1,84 @@
+// Marketplace page styles
+
+.marketplace-page {
+    .marketplace-filters {
+        display: flex;
+        gap: $spacing-md;
+        margin: $spacing-lg 0;
+
+        .form-input { flex: 1; }
+        .form-select { width: 200px; }
+    }
+
+    .extensions-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: $spacing-lg;
+    }
+
+    .extension-card {
+        padding: $spacing-lg;
+        display: flex;
+        flex-direction: column;
+        gap: $spacing-sm;
+
+        &__header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            h3 { margin: 0; }
+        }
+
+        &__desc {
+            color: $text-secondary;
+            font-size: 0.9rem;
+            margin: 0;
+            line-height: 1.5;
+        }
+
+        &__meta {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            color: $text-muted;
+        }
+
+        &__rating {
+            color: $warning-color;
+            letter-spacing: 1px;
+        }
+
+        &__info {
+            display: flex;
+            gap: $spacing-sm;
+            font-size: 0.8rem;
+            color: $text-muted;
+        }
+
+        &__actions {
+            margin-top: $spacing-sm;
+            padding-top: $spacing-sm;
+            border-top: 1px solid $border-color;
+        }
+    }
+
+    .installed-list {
+        display: flex;
+        flex-direction: column;
+        gap: $spacing-sm;
+        margin-top: $spacing-lg;
+    }
+
+    .installed-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: $spacing-md;
+
+        &__info {
+            display: flex;
+            align-items: baseline;
+            gap: $spacing-sm;
+        }
+    }
+}

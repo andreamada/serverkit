@@ -1,0 +1,138 @@
+import React, { useState } from 'react';
+import api from '../../services/api';
+
+const IntegrityTab = () => {
+    const [checking, setChecking] = useState(false);
+    const [initializing, setInitializing] = useState(false);
+    const [results, setResults] = useState(null);
+    const [message, setMessage] = useState(null);
+
+    async function handleInitialize() {
+        if (!confirm('This will create a new baseline for file integrity monitoring. Continue?')) return;
+
+        setInitializing(true);
+        setMessage(null);
+        try {
+            const result = await api.initializeIntegrityDatabase();
+            setMessage({ type: 'success', text: result.message });
+        } catch (err) {
+            setMessage({ type: 'error', text: err.message });
+        } finally {
+            setInitializing(false);
+        }
+    }
+
+    async function handleCheck() {
+        setChecking(true);
+        setMessage(null);
+        try {
+            const result = await api.checkFileIntegrity();
+            setResults(result);
+            if (result.total_changes === 0) {
+                setMessage({ type: 'success', text: 'No changes detected' });
+            }
+        } catch (err) {
+            setMessage({ type: 'error', text: err.message });
+        } finally {
+            setChecking(false);
+        }
+    }
+
+    return (
+        <div className="integrity-tab">
+            {message && (
+                <div className={`alert alert-${message.type === 'success' ? 'success' : 'danger'}`}>
+                    {message.text}
+                </div>
+            )}
+
+            <div className="card">
+                <div className="card-header">
+                    <h3>File Integrity Monitoring</h3>
+                </div>
+                <div className="card-body">
+                    <p className="description">
+                        File integrity monitoring tracks changes to critical system files. Initialize a baseline database,
+                        then periodically check for unauthorized modifications.
+                    </p>
+
+                    <div className="integrity-actions">
+                        <button
+                            className="btn btn-secondary"
+                            onClick={handleInitialize}
+                            disabled={initializing}
+                        >
+                            {initializing ? 'Initializing...' : 'Initialize Baseline'}
+                        </button>
+                        <button
+                            className="btn btn-primary"
+                            onClick={handleCheck}
+                            disabled={checking}
+                        >
+                            {checking ? 'Checking...' : 'Check Integrity'}
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {results && results.total_changes > 0 && (
+                <div className="card">
+                    <div className="card-header">
+                        <h3>Changes Detected</h3>
+                        <span className="badge badge-warning">{results.total_changes} changes</span>
+                    </div>
+                    <div className="card-body">
+                        {results.changes.modified?.length > 0 && (
+                            <div className="change-section">
+                                <h4>Modified Files ({results.changes.modified.length})</h4>
+                                <ul className="file-list">
+                                    {results.changes.modified.map((file, i) => (
+                                        <li key={i}>{file.path}</li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+
+                        {results.changes.deleted?.length > 0 && (
+                            <div className="change-section">
+                                <h4>Deleted Files ({results.changes.deleted.length})</h4>
+                                <ul className="file-list">
+                                    {results.changes.deleted.map((file, i) => (
+                                        <li key={i}>{file}</li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+
+                        {results.changes.new?.length > 0 && (
+                            <div className="change-section">
+                                <h4>New Files ({results.changes.new.length})</h4>
+                                <ul className="file-list">
+                                    {results.changes.new.slice(0, 50).map((file, i) => (
+                                        <li key={i}>{file}</li>
+                                    ))}
+                                    {results.changes.new.length > 50 && (
+                                        <li className="text-muted">... and {results.changes.new.length - 50} more</li>
+                                    )}
+                                </ul>
+                            </div>
+                        )}
+
+                        {results.changes.permission_changed?.length > 0 && (
+                            <div className="change-section">
+                                <h4>Permission Changes ({results.changes.permission_changed.length})</h4>
+                                <ul className="file-list">
+                                    {results.changes.permission_changed.map((file, i) => (
+                                        <li key={i}>{file.path} ({file.old_mode} → {file.new_mode})</li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+export default IntegrityTab;

@@ -1,0 +1,737 @@
+// ============================================
+// DOCKER PAGE - NEW DESIGN
+// ============================================
+
+// Page Layout
+.docker-page-new {
+    padding: 0;
+}
+
+.docker-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: $space-6;
+}
+
+.docker-page-title {
+    h2 {
+        font-size: $font-size-xl;
+        font-weight: $font-weight-semibold;
+        color: $text-primary;
+        margin: 0;
+    }
+}
+
+.docker-page-subtitle {
+    color: $text-secondary;
+    font-size: $font-size-sm;
+    margin-top: $space-1;
+}
+
+.docker-page-actions {
+    display: flex;
+    align-items: center;
+    gap: $space-3;
+}
+
+// Docker-specific server-selector spacing (base styles in components/_server-selector)
+.docker-page-actions .server-selector {
+    margin-right: $space-2;
+}
+
+// Stats Row
+.docker-stats-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: $space-4;
+    margin-bottom: $space-6;
+
+    @media (max-width: $breakpoint-lg) {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    @media (max-width: $breakpoint-sm) {
+        grid-template-columns: 1fr;
+    }
+}
+
+.docker-stat-card {
+    background: $bg-card;
+    border: 1px solid $border-subtle;
+    border-radius: $radius-md;
+    padding: $space-5;
+}
+
+.docker-stat-label {
+    font-size: $font-size-xs;
+    font-weight: $font-weight-semibold;
+    text-transform: uppercase;
+    color: $text-tertiary;
+    margin-bottom: $space-2;
+    letter-spacing: 0.05em;
+}
+
+.docker-stat-value {
+    font-family: $font-mono;
+    font-size: $font-size-2xl;
+    font-weight: $font-weight-bold;
+    color: $text-primary;
+}
+
+.docker-stat-meta {
+    font-size: $font-size-xs;
+    color: $text-tertiary;
+    margin-top: $space-1;
+    display: flex;
+    align-items: center;
+    gap: $space-3;
+}
+
+.docker-stat-running {
+    color: $success;
+
+    &::before {
+        content: '';
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        background: $success;
+        border-radius: 50%;
+        margin-right: $space-1;
+    }
+}
+
+.docker-stat-stopped {
+    color: $text-tertiary;
+
+    &::before {
+        content: '';
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        background: $text-tertiary;
+        border-radius: 50%;
+        margin-right: $space-1;
+    }
+}
+
+// Panel
+.docker-panel {
+    background: $bg-card;
+    border: 1px solid $border-subtle;
+    border-radius: $radius-md;
+    overflow: hidden;
+}
+
+.docker-panel-header {
+    padding: $space-4 $space-5;
+    border-bottom: 1px solid $border-subtle;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.docker-panel-tabs {
+    display: flex;
+    gap: $space-6;
+}
+
+.docker-panel-tab {
+    color: $text-tertiary;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    cursor: pointer;
+    padding-bottom: $space-1;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+
+    &:hover {
+        color: $text-primary;
+    }
+
+    &.active {
+        color: $text-primary;
+        border-color: $accent-primary;
+    }
+}
+
+.docker-panel-actions {
+    display: flex;
+    gap: $space-2;
+}
+
+.docker-panel-content {
+    // Content area - no padding needed, tabs handle their own
+}
+
+// Table Header (filter + search)
+.docker-table-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: $space-3 $space-5;
+    border-bottom: 1px solid $border-subtle;
+    background: $bg-hover;
+}
+
+.docker-filter-toggle {
+    display: flex;
+    align-items: center;
+    gap: $space-2;
+    font-size: $font-size-sm;
+    color: $text-secondary;
+    cursor: pointer;
+
+    input[type="checkbox"] {
+        width: 14px;
+        height: 14px;
+        accent-color: $accent-primary;
+    }
+}
+
+.docker-search {
+    background: $bg-card;
+    border: 1px solid $border-subtle;
+    padding: $space-2 $space-3;
+    border-radius: $radius-sm;
+    color: $text-primary;
+    font-size: $font-size-xs;
+    width: 200px;
+
+    &::placeholder {
+        color: $text-tertiary;
+    }
+
+    &:focus {
+        outline: none;
+        border-color: $accent-primary;
+    }
+}
+
+// Docker Table
+.docker-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: $font-size-sm;
+
+    th {
+        text-align: left;
+        padding: $space-3 $space-5;
+        background: $bg-hover;
+        color: $text-tertiary;
+        font-size: $font-size-xs;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-weight: $font-weight-semibold;
+    }
+
+    td {
+        padding: $space-4 $space-5;
+        border-bottom: 1px solid $border-subtle;
+        vertical-align: middle;
+    }
+
+    tr:hover {
+        background: fade($white, 2%);
+    }
+
+    tr:last-child td {
+        border-bottom: none;
+    }
+}
+
+// Container Name & ID
+.docker-container-name {
+    font-weight: $font-weight-semibold;
+    color: $text-primary;
+    font-size: $font-size-sm;
+    display: block;
+    margin-bottom: $space-1;
+}
+
+.docker-container-id {
+    font-family: $font-mono;
+    color: $accent-primary;
+    font-size: $font-size-xs;
+}
+
+// Image Tag
+.docker-image-tag {
+    font-family: $font-mono;
+    color: $text-secondary;
+    font-size: $font-size-xs;
+    background: $bg-hover;
+    padding: $space-1 $space-2;
+    border-radius: $radius-sm;
+}
+
+// Status Pill
+.docker-status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: $space-2;
+    font-size: $font-size-xs;
+    font-weight: $font-weight-semibold;
+    padding: $space-1 $space-2;
+    border-radius: $radius-full;
+
+    &.running {
+        background: fade($success, 10%);
+        color: $success;
+        border: 1px solid fade($success, 20%);
+    }
+
+    &.exited {
+        background: fade($danger, 10%);
+        color: $danger;
+        border: 1px solid fade($danger, 20%);
+    }
+}
+
+.docker-status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+}
+
+.docker-status-detail {
+    font-size: $font-size-xs;
+    color: $text-tertiary;
+    margin-top: $space-1;
+}
+
+// Ports
+.docker-ports {
+    font-family: $font-mono;
+    color: $text-primary;
+    font-size: $font-size-xs;
+    line-height: 1.6;
+
+    &.faded {
+        opacity: 0.4;
+    }
+}
+
+// Resource Bars
+.docker-res-container {
+    display: flex;
+    align-items: center;
+    gap: $space-2;
+    font-size: $font-size-xs;
+    color: $text-tertiary;
+    margin-bottom: $space-1;
+
+    &:last-child {
+        margin-bottom: 0;
+    }
+}
+
+.docker-res-label {
+    width: 28px;
+    flex-shrink: 0;
+}
+
+.docker-res-track {
+    width: 50px;
+    height: 4px;
+    background: $bg-hover;
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.docker-res-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.3s ease;
+}
+
+.docker-res-value {
+    width: 32px;
+    text-align: right;
+    font-family: $font-mono;
+}
+
+.faded {
+    opacity: 0.3;
+}
+
+// Icon Actions
+.docker-actions-cell {
+    text-align: right;
+    white-space: nowrap;
+}
+
+.docker-icon-action {
+    background: transparent;
+    border: 1px solid transparent;
+    color: $text-tertiary;
+    width: 28px;
+    height: 28px;
+    border-radius: $radius-sm;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+
+    &:hover:not(:disabled) {
+        color: $text-primary;
+        background: $bg-hover;
+        border-color: $border-subtle;
+    }
+
+    &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    svg {
+        width: 14px;
+        height: 14px;
+    }
+}
+
+// Empty & Loading States
+.docker-empty {
+    text-align: center;
+    padding: $space-12;
+    color: $text-secondary;
+
+    h3 {
+        font-size: $font-size-lg;
+        font-weight: $font-weight-semibold;
+        color: $text-primary;
+        margin: 0 0 $space-2 0;
+    }
+
+    p {
+        margin: 0;
+        font-size: $font-size-sm;
+    }
+}
+
+.docker-loading {
+    text-align: center;
+    padding: $space-12;
+    color: $text-secondary;
+}
+
+// ============================================
+// LEGACY STYLES (keep for Docker unavailable state)
+// ============================================
+
+.docker-list {
+    @include flex-column-gap($space-3);
+}
+
+.docker-item {
+    @include list-item-base();
+}
+
+.docker-item-info {
+    @include flex-start();
+    gap: $space-4;
+    flex: 1;
+    min-width: 0;
+}
+
+.docker-item-icon {
+    @include icon-box();
+    background: $bg-hover;
+    border-radius: $radius-lg;
+    color: $color-docker;
+
+    &.image-icon {
+        color: #a78bfa; // Purple for images
+    }
+
+    &.network-icon {
+        color: #34d399; // Green for networks
+    }
+
+    &.volume-icon {
+        color: #fbbf24; // Yellow for volumes
+    }
+}
+
+.docker-item-details {
+    min-width: 0;
+
+    h3 {
+        font-size: $font-size-base;
+        font-weight: $font-weight-semibold;
+        color: $text-primary;
+        margin-bottom: $space-1;
+        @include truncate();
+    }
+}
+
+.docker-item-meta {
+    @include flex-start();
+    gap: $space-3;
+    font-size: $font-size-sm;
+    color: $text-tertiary;
+    flex-wrap: wrap;
+
+    .mono {
+        @include mono-text();
+        background: $bg-hover;
+        padding: $space-1 - 2 $space-2 - 2;
+        border-radius: $radius-sm;
+    }
+}
+
+.docker-item-status {
+    flex-shrink: 0;
+}
+
+.docker-item-actions {
+    display: flex;
+    gap: $space-2;
+    flex-shrink: 0;
+}
+
+// Container Exec Modal
+.exec-modal-body {
+    display: flex;
+    flex-direction: column;
+    height: 400px;
+}
+
+.exec-output {
+    flex: 1;
+    background: $bg-card;
+    border: 1px solid $border-subtle;
+    border-radius: $radius-md;
+    padding: $space-4;
+    overflow-y: auto;
+    font-family: $font-mono;
+    font-size: $font-size-sm;
+    margin-bottom: $space-3;
+}
+
+.exec-welcome {
+    color: $text-secondary;
+    text-align: center;
+    padding: $space-8 0;
+
+    p {
+        margin-bottom: $space-2;
+    }
+
+    code {
+        background: $bg-hover;
+        padding: $space-1 $space-2;
+        border-radius: $radius-sm;
+        color: $accent-primary;
+    }
+}
+
+.exec-line {
+    margin-bottom: $space-2;
+
+    pre {
+        margin: 0;
+        white-space: pre-wrap;
+        word-break: break-all;
+    }
+
+    &.exec-command {
+        color: $accent-primary;
+        font-weight: $font-weight-medium;
+    }
+
+    &.exec-output {
+        color: $text-primary;
+    }
+
+    &.exec-error {
+        color: $danger;
+    }
+
+    &.exec-info {
+        color: $text-tertiary;
+        font-size: $font-size-xs;
+    }
+
+    &.exec-loading {
+        color: $text-secondary;
+        display: flex;
+        align-items: center;
+        gap: $space-2;
+    }
+}
+
+.spinner-inline {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid $border-subtle;
+    border-top-color: $accent-primary;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+.exec-input-form {
+    display: flex;
+    align-items: center;
+    gap: $space-2;
+    background: $bg-card;
+    border: 1px solid $border-subtle;
+    border-radius: $radius-md;
+    padding: $space-2 $space-3;
+
+    &:focus-within {
+        border-color: $accent-primary;
+    }
+}
+
+.exec-prompt {
+    color: $accent-primary;
+    font-family: $font-mono;
+    font-weight: $font-weight-semibold;
+}
+
+.exec-input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    color: $text-primary;
+    font-family: $font-mono;
+    font-size: $font-size-sm;
+    outline: none;
+
+    &::placeholder {
+        color: $text-tertiary;
+    }
+
+    &:disabled {
+        opacity: 0.5;
+    }
+}
+
+// Docker Unavailable State
+.docker-page {
+    .page-header {
+        margin-bottom: $space-6;
+
+        .page-header-content {
+            h1 {
+                font-size: $font-size-2xl;
+                font-weight: $font-weight-semibold;
+                margin: 0 0 $space-1 0;
+            }
+
+            .page-description {
+                color: $text-secondary;
+                margin: 0;
+            }
+        }
+    }
+}
+
+.docker-unavailable {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: $space-12 $space-6;
+    background: $bg-card;
+    border: 1px solid $border-subtle;
+    border-radius: $radius-xl;
+    max-width: 600px;
+    margin: 0 auto;
+
+    .docker-unavailable-icon {
+        width: 100px;
+        height: 100px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: fade($color-docker, 10%);
+        border-radius: $radius-xl;
+        margin-bottom: $space-6;
+
+        svg {
+            stroke: $color-docker;
+            opacity: 0.6;
+        }
+    }
+
+    h2 {
+        font-size: $font-size-xl;
+        font-weight: $font-weight-semibold;
+        margin: 0 0 $space-2 0;
+        color: $text-primary;
+    }
+
+    .docker-unavailable-message {
+        color: $text-secondary;
+        font-size: $font-size-base;
+        margin: 0 0 $space-4 0;
+    }
+
+    .docker-unavailable-details {
+        width: 100%;
+        margin-bottom: $space-6;
+
+        code {
+            display: block;
+            padding: $space-3 $space-4;
+            background: $bg-hover;
+            border: 1px solid $border-subtle;
+            border-radius: $radius-md;
+            font-family: $font-mono;
+            font-size: $font-size-xs;
+            color: $text-tertiary;
+            word-break: break-all;
+            text-align: left;
+        }
+    }
+
+    .docker-unavailable-help {
+        width: 100%;
+        padding: $space-5;
+        background: $bg-hover;
+        border-radius: $radius-lg;
+        text-align: left;
+        margin-bottom: $space-6;
+
+        h4 {
+            font-size: $font-size-sm;
+            font-weight: $font-weight-semibold;
+            margin: 0 0 $space-3 0;
+            color: $text-primary;
+        }
+
+        ul {
+            margin: 0;
+            padding-left: $space-5;
+
+            li {
+                font-size: $font-size-sm;
+                color: $text-secondary;
+                margin-bottom: $space-2;
+
+                &:last-child {
+                    margin-bottom: 0;
+                }
+            }
+        }
+    }
+
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: $space-2;
+
+        svg {
+            width: 16px;
+            height: 16px;
+        }
+    }
+}

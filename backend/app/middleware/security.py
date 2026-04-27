@@ -1,0 +1,59 @@
+"""Security middleware for adding security headers to responses."""
+
+from flask import Flask
+
+
+def register_security_headers(app: Flask):
+    """Register security headers as an after_request handler."""
+
+    @app.after_request
+    def add_security_headers(response):
+        # Skip for OPTIONS requests (CORS preflight)
+        from flask import request
+        if request.method == 'OPTIONS':
+            return response
+
+        # Prevent clickjacking
+        response.headers['X-Frame-Options'] = 'DENY'
+
+        # Prevent MIME type sniffing
+        response.headers['X-Content-Type-Options'] = 'nosniff'
+
+        # XSS Protection (legacy but still useful for older browsers)
+        response.headers['X-XSS-Protection'] = '1; mode=block'
+
+        # Referrer Policy
+        response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+
+        # Content Security Policy
+        # In debug mode, allow inline styles/scripts for Vite dev tooling
+        if app.debug:
+            csp_directives = [
+                "default-src 'self'",
+                "script-src 'self' 'unsafe-inline'",
+                "style-src 'self' 'unsafe-inline'",
+                "img-src 'self' data: https:",
+                "font-src 'self'",
+                "connect-src 'self' ws: wss: http://localhost:* http://127.0.0.1:* https://*.ngrok-free.app https://*.ngrok.io",
+                "frame-ancestors 'none'",
+            ]
+        else:
+            csp_directives = [
+                "default-src 'self'",
+                "script-src 'self'",
+                "style-src 'self'",
+                "img-src 'self' data: https:",
+                "font-src 'self'",
+                "connect-src 'self' ws: wss:",
+                "frame-ancestors 'none'",
+            ]
+        response.headers['Content-Security-Policy'] = '; '.join(csp_directives)
+
+        # Permissions Policy (formerly Feature-Policy)
+        response.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=()'
+
+        # HSTS - only in production and on HTTPS
+        if not app.debug:
+            response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+
+        return response

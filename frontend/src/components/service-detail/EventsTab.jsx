@@ -1,0 +1,101 @@
+import React, { useState } from 'react';
+import { useDeployments } from '../../hooks/useDeployments';
+import { getDeployStatus, formatRelativeTime, formatDuration } from '../../utils/serviceTypes';
+
+const EventsTab = ({ appId }) => {
+    const { deployments, loading, error, reload } = useDeployments(appId);
+    const [expandedId, setExpandedId] = useState(null);
+
+    if (loading) {
+        return <div className="loading">Loading deployment history...</div>;
+    }
+
+    if (error) {
+        return (
+            <div className="events-tab__empty">
+                <h3>Failed to load events</h3>
+                <p>{error}</p>
+                <button className="btn btn-secondary" onClick={reload}>Retry</button>
+            </div>
+        );
+    }
+
+    if (deployments.length === 0) {
+        return (
+            <div className="events-tab__empty">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ opacity: 0.4 }}>
+                    <circle cx="12" cy="12" r="10"/>
+                    <polyline points="12 6 12 12 16 14"/>
+                </svg>
+                <h3>No deployments yet</h3>
+                <p>Deploy your service to see events here.</p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="events-tab">
+            <div className="events-tab__header">
+                <h3>Deployment Events</h3>
+                <button className="btn btn-secondary btn-sm" onClick={reload}>Refresh</button>
+            </div>
+
+            <div className="events-tab__timeline">
+                {deployments.map((deploy, idx) => {
+                    const statusInfo = getDeployStatus(deploy.status);
+                    const isExpanded = expandedId === deploy.id;
+                    const isLatest = idx === 0 && deploy.status === 'success';
+
+                    return (
+                        <div
+                            key={deploy.id}
+                            className={`events-tab__event ${isExpanded ? 'events-tab__event--expanded' : ''}`}
+                            onClick={() => setExpandedId(isExpanded ? null : deploy.id)}
+                        >
+                            <div
+                                className="events-tab__event-status"
+                                style={{ backgroundColor: statusInfo.color }}
+                            />
+                            <div className="events-tab__event-body">
+                                <div className="events-tab__event-header">
+                                    <div className="events-tab__event-commit">
+                                        {deploy.commitSha && (
+                                            <span className="events-tab__event-sha">
+                                                {deploy.commitSha.substring(0, 7)}
+                                            </span>
+                                        )}
+                                        <span className="events-tab__event-message">
+                                            {deploy.commitMessage || deploy.version || `Deployment #${deployments.length - idx}`}
+                                        </span>
+                                    </div>
+                                    <span
+                                        className="events-tab__event-badge"
+                                        style={{
+                                            backgroundColor: statusInfo.color + '1a',
+                                            color: statusInfo.color,
+                                        }}
+                                    >
+                                        {isLatest ? 'Live' : statusInfo.label}
+                                    </span>
+                                </div>
+                                <div className="events-tab__event-meta">
+                                    {deploy.duration && <span>{formatDuration(deploy.duration)}</span>}
+                                    {deploy.trigger && <span>{deploy.trigger}</span>}
+                                    {deploy.branch && <span>{deploy.branch}</span>}
+                                    <span>{formatRelativeTime(deploy.timestamp)}</span>
+                                </div>
+                                {isExpanded && deploy.logs && (
+                                    <div className="events-tab__event-logs">
+                                        <pre>{deploy.logs}</pre>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+};
+
+export default EventsTab;
