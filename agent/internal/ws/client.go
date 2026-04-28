@@ -141,7 +141,7 @@ func (c *Client) Connect(ctx context.Context) error {
 	headers := http.Header{}
 	headers.Set("X-Agent-ID", c.auth.AgentID())
 	headers.Set("X-API-Key-Prefix", c.auth.GetAPIKeyPrefix())
-	headers.Set("User-Agent", "ServerKit-Agent/1.0.5")
+	headers.Set("User-Agent", "ServerKit-Agent/1.0.6")
 	headers.Set("ngrok-skip-browser-warning", "true")
 
 	c.log.Debug("Connecting to Socket.IO", "url", sioURL)
