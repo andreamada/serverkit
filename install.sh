@@ -104,7 +104,9 @@ setup_swap
 OS_FAMILY="unknown"
 if [ -f /etc/os-release ]; then
     . /etc/os-release
-    if [ "$ID" = "ubuntu" ] || [ "$ID" = "debian" ]; then
+    if [ "$ID" = "ubuntu" ]; then
+        OS_FAMILY="ubuntu"
+    elif [ "$ID" = "debian" ]; then
         OS_FAMILY="debian"
     elif [ "$ID" = "fedora" ]; then
         OS_FAMILY="fedora"
@@ -116,9 +118,9 @@ else
 fi
 
 echo ""
-print_info "Installing system dependencies..."
+print_info "Installing system dependencies for $OS_FAMILY..."
 
-if [ "$OS_FAMILY" = "debian" ] || [ "$OS_FAMILY" = "unknown" ]; then
+if [ "$OS_FAMILY" = "ubuntu" ] || [ "$OS_FAMILY" = "debian" ] || [ "$OS_FAMILY" = "unknown" ]; then
     # Configure needrestart for non-interactive mode (Ubuntu 22.04+)
     # This prevents the "Which services should be restarted?" dialog
     # and avoids dpkg lock issues during automated installs
@@ -152,28 +154,42 @@ if [ "$OS_FAMILY" = "debian" ] || [ "$OS_FAMILY" = "unknown" ]; then
     if [ -z "$PYTHON_BIN" ]; then
         print_info "Installing Python 3.12..."
 
-        if [ "$ID" = "ubuntu" ]; then
+        if [ "$OS_FAMILY" = "ubuntu" ]; then
             # Ubuntu: use deadsnakes PPA
             apt-get install -y software-properties-common
             add-apt-repository -y ppa:deadsnakes/ppa
             apt-get update
             apt-get install -y python3.12 python3.12-venv python3.12-dev
             PYTHON_BIN="python3.12"
-        else
-            # Debian / other apt-based: build from source
-            print_info "Building Python 3.12 from source (this may take a few minutes)..."
-            apt-get install -y wget zlib1g-dev libbz2-dev libreadline-dev \
-                libsqlite3-dev libncurses5-dev libncursesw5-dev \
-                xz-utils tk-dev liblzma-dev
-            cd /tmp
-            wget -q https://www.python.org/ftp/python/3.12.8/Python-3.12.8.tgz
-            tar xzf Python-3.12.8.tgz
-            cd Python-3.12.8
-            ./configure --enable-optimizations --prefix=/usr/local 2>&1 | tail -1
-            make -j"$(nproc)" 2>&1 | tail -1
-            make altinstall 2>&1 | tail -1
-            cd /tmp && rm -rf Python-3.12.8 Python-3.12.8.tgz
-            PYTHON_BIN="python3.12"
+        elif [ "$OS_FAMILY" = "debian" ]; then
+            # Debian: Try to use backports if available, otherwise build from source
+            print_info "Configuring Python 3.12 for Debian..."
+            # Check if bullseye/bookworm
+            if [[ "$VERSION_ID" == "11" ]]; then
+                # Debian 11 Bullseye needs source build for 3.12
+                BUILD_FROM_SOURCE=true
+            elif [[ "$VERSION_ID" == "12" ]]; then
+                # Debian 12 Bookworm has 3.11, but 3.12 might be in backports
+                apt-get install -y python3.12 python3.12-venv python3.12-dev 2>/dev/null && PYTHON_BIN="python3.12" || BUILD_FROM_SOURCE=true
+            else
+                BUILD_FROM_SOURCE=true
+            fi
+
+            if [ "$BUILD_FROM_SOURCE" = true ]; then
+                print_info "Building Python 3.12 from source on Debian (this may take a few minutes)..."
+                apt-get install -y wget zlib1g-dev libbz2-dev libreadline-dev \
+                    libsqlite3-dev libncurses5-dev libncursesw5-dev \
+                    xz-utils tk-dev liblzma-dev
+                cd /tmp
+                wget -q https://www.python.org/ftp/python/3.12.8/Python-3.12.8.tgz
+                tar xzf Python-3.12.8.tgz
+                cd Python-3.12.8
+                ./configure --enable-optimizations --prefix=/usr/local 2>&1 | tail -1
+                make -j"$(nproc)" 2>&1 | tail -1
+                make altinstall 2>&1 | tail -1
+                cd /tmp && rm -rf Python-3.12.8 Python-3.12.8.tgz
+                PYTHON_BIN="python3.12"
+            fi
         fi
 
         if ! command -v "$PYTHON_BIN" &>/dev/null; then
