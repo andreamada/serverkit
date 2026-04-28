@@ -469,9 +469,10 @@ setup_swap
 # Build frontend on host (avoids Docker memory overhead on low-RAM VPS)
 print_info "Building frontend..."
 cd "$INSTALL_DIR/frontend"
-# Use npm install --include=dev for robustness on fresh installs
-npm install --include=dev --prefer-offline 2>&1 | tail -1
-NODE_OPTIONS="--max-old-space-size=1024" npm run build
+# Ensure devDependencies are installed
+NODE_ENV=development npm install --prefer-offline 2>&1 | tail -1
+# Use npx for building to ensure vite is found
+NODE_OPTIONS="--max-old-space-size=1024" NODE_ENV=development npx vite build
 print_success "Frontend built"
 
 # Package frontend into nginx container
