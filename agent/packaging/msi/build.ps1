@@ -112,8 +112,9 @@ FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.\par
     Push-Location $buildDir
     try {
         Write-Host "Running WiX build..."
-        # Note: -acknowledge-osmf is required for WiX v5+ in CI environments
-        wix build Product.wxs -o "$OutputDir\serverkit-agent-$Version-x64.msi" -define Version=$Version -acknowledge-osmf
+        # Set environment variable to acknowledge OSMF EULA (required for WiX v5+ in CI)
+        $env:WIX_ACKNOWLEDGE_OSMF = "true"
+        wix build Product.wxs -o "$OutputDir\serverkit-agent-$Version-x64.msi" -define Version=$Version
     }
     finally {
         Pop-Location
