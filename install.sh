@@ -328,6 +328,18 @@ if [ ! -f "$INSTALL_DIR/.env" ]; then
     SECRET_KEY=$(openssl rand -hex 32)
     JWT_SECRET_KEY=$(openssl rand -hex 32)
 
+    # Detect server public IP for CORS (try multiple sources)
+    SERVER_IP=$(curl -s --connect-timeout 5 ifconfig.me 2>/dev/null \
+        || curl -s --connect-timeout 5 api.ipify.org 2>/dev/null \
+        || hostname -I 2>/dev/null | awk '{print $1}')
+    SERVER_IP=$(echo "$SERVER_IP" | tr -d '[:space:]')
+
+    CORS_ORIGINS="http://localhost,https://localhost"
+    if [ -n "$SERVER_IP" ]; then
+        CORS_ORIGINS="$CORS_ORIGINS,http://$SERVER_IP,https://$SERVER_IP"
+        print_info "Detected server IP: $SERVER_IP (added to CORS_ORIGINS)"
+    fi
+
     cat > "$INSTALL_DIR/.env" << EOF
 # ServerKit Configuration
 # Generated on $(date)
@@ -339,8 +351,8 @@ JWT_SECRET_KEY=$JWT_SECRET_KEY
 # Database (SQLite by default)
 DATABASE_URL=sqlite:///$INSTALL_DIR/backend/instance/serverkit.db
 
-# CORS Origins (comma-separated, add your domain)
-CORS_ORIGINS=http://localhost,https://localhost
+# CORS Origins (comma-separated, add your domain/IP here)
+CORS_ORIGINS=$CORS_ORIGINS
 
 # Ports
 PORT=80
