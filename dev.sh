@@ -36,7 +36,7 @@ fail() {
 }
 
 start_backend() {
-    header "Starting Backend (http://localhost:5001)"
+    header "Starting Backend (http://localhost:5000)"
     cd "$BACKEND_DIR"
     if [ -f venv/bin/activate ]; then
         source venv/bin/activate
@@ -53,7 +53,7 @@ start_frontend() {
 start_both() {
     echo ""
     echo -e "${CYAN}ServerKit Dev Server${NC}"
-    echo "  Backend:  http://localhost:5001"
+    echo "  Backend:  http://localhost:5000"
     echo "  Frontend: http://localhost:5173"
     echo ""
 

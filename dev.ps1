@@ -43,7 +43,7 @@ function Write-Fail {
 }
 
 function Start-Backend {
-    Write-Header "Starting Backend (http://localhost:5001)"
+    Write-Header "Starting Backend (http://localhost:5000)"
     Push-Location $BackendDir
     try {
         if (Test-Path 'venv\Scripts\Activate.ps1') {
@@ -70,7 +70,7 @@ function Start-Frontend {
 function Start-Both {
     Write-Host ""
     Write-Host "ServerKit Dev Server" -ForegroundColor Cyan
-    Write-Host "  Backend:  http://localhost:5001"
+    Write-Host "  Backend:  http://localhost:5000"
     Write-Host "  Frontend: http://localhost:5173"
     Write-Host ""
 
