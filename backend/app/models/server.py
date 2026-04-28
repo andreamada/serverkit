@@ -316,7 +316,7 @@ class ServerMetrics(db.Model):
     """Historical metrics from servers"""
     __tablename__ = 'server_metrics'
 
-    id = db.Column(db.BigInteger, primary_key=True, autoincrement=True)
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     server_id = db.Column(db.String(36), db.ForeignKey('servers.id'), nullable=False, index=True)
 
     timestamp = db.Column(db.DateTime, default=datetime.utcnow, index=True)
