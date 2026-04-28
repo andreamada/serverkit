@@ -1463,7 +1463,7 @@ def get_install_script_linux():
     # Replace placeholders with actual values
     server_url = request.url_root.rstrip('/')
     content = content.replace('https://your-serverkit.com', server_url)
-    content = content.replace('jhd3197/ServerKit', GITHUB_REPO)
+    content = content.replace('andreamada/serverkit', GITHUB_REPO)
 
     return Response(
         content,
@@ -1498,7 +1498,7 @@ def get_install_script_windows():
     # Replace placeholders with actual values
     server_url = request.url_root.rstrip('/')
     content = content.replace('https://your-serverkit.com', server_url)
-    content = content.replace('jhd3197/ServerKit', GITHUB_REPO)
+    content = content.replace('andreamada/serverkit', GITHUB_REPO)
 
     return Response(
         content,
@@ -1574,7 +1574,7 @@ _releases_cache = {
     'expires': None
 }
 
-GITHUB_REPO = os.environ.get('SERVERKIT_GITHUB_REPO', 'jhd3197/ServerKit')
+GITHUB_REPO = os.environ.get('SERVERKIT_GITHUB_REPO', 'andreamada/serverkit')
 
 
 def _get_latest_agent_release():
