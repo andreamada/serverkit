@@ -248,14 +248,28 @@ func (c *Client) connectNamespace() error {
 
 	// Read namespace CONNECT ack
 	c.conn.SetReadDeadline(time.Now().Add(30 * time.Second))
-	_, msg, err := c.conn.ReadMessage()
-	if err != nil {
-		return fmt.Errorf("failed to read CONNECT ack: %w", err)
-	}
-	c.conn.SetReadDeadline(time.Time{})
+	defer c.conn.SetReadDeadline(time.Time{})
 
-	msgStr := string(msg)
-	c.log.Debug("Received namespace response", "raw", msgStr)
+	var msgStr string
+	for {
+		_, msg, err := c.conn.ReadMessage()
+		if err != nil {
+			return fmt.Errorf("failed to read CONNECT ack: %w", err)
+		}
+
+		msgStr = string(msg)
+		c.log.Debug("Received namespace response", "raw", msgStr)
+
+		// Handle Engine.IO ping (2) -> pong (3)
+		if msgStr == "2" {
+			c.log.Debug("Received ping during namespace connect, sending pong")
+			if err := c.conn.WriteMessage(websocket.TextMessage, []byte("3")); err != nil {
+				return fmt.Errorf("failed to send pong during namespace connect: %w", err)
+			}
+			continue
+		}
+		break
+	}
 
 	// Expected: "40/agent,{\"sid\":\"...\"}"
 	// Or error: "44/agent,{\"message\":\"...\"}"
