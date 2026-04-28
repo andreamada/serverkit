@@ -11,8 +11,11 @@ COPY package*.json ./
 RUN npm install --include=dev
 
 COPY . .
+# Add local node_modules binaries to PATH
+ENV PATH /app/node_modules/.bin:$PATH
+
 # Vite build automatically generates a production-optimized bundle
-RUN npx vite build
+RUN npm run build
 
 # Stage 2: Serve
 FROM nginx:alpine

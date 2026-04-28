@@ -476,17 +476,17 @@ NODE_OPTIONS="--max-old-space-size=1024" npx vite build
 print_success "Frontend built (Production Mode)"
 
 # Package frontend into nginx container
-print_info "Building frontend container..."
+print_info "Building containers..."
 cd "$INSTALL_DIR"
-docker compose build frontend
+docker compose build
 
 print_info "Starting services..."
 
 # Start backend (systemd)
 systemctl start serverkit
 
-# Start frontend (Docker)
-docker compose up -d frontend
+# Start frontend and backend (Docker)
+docker compose up -d
 
 # Start nginx
 systemctl start nginx
