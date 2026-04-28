@@ -32,11 +32,16 @@ def init_socketio(app):
     """Initialize SocketIO with the Flask app."""
     # In development, allow all origins to support ngrok tunnels
     cors_allowed_origins = "*" if app.debug else app.config.get('CORS_ORIGINS', [])
-    
+
+    # async_mode must match the gunicorn worker:
+    # - production uses GeventWebSocketWorker → 'gevent'
+    # - development uses werkzeug dev server via socketio.run() → 'threading'
+    async_mode = 'threading' if app.debug else 'gevent'
+
     socketio.init_app(
         app,
         cors_allowed_origins=cors_allowed_origins,
-        async_mode='threading',
+        async_mode=async_mode,
         ping_timeout=60,
         ping_interval=25,
         max_http_buffer_size=1e7
