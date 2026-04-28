@@ -1,28 +1,15 @@
 # Frontend Dockerfile for ServerKit
-# Multi-stage build: Node builds the assets, nginx serves them.
+# Standard Nginx container serving pre-built assets.
+# Note: Assets must be built on the host first (npm run build).
 
-# Stage 1: Build
-FROM node:20-alpine AS builder
-
-WORKDIR /app
-
-# Ensure dev dependencies are installed for build
-ENV NODE_ENV=development
-
-COPY package*.json ./
-RUN npm ci
-
-COPY . .
-RUN npm run build
-
-# Stage 2: Serve
 FROM nginx:alpine
 
 # Copy custom nginx config
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Copy built frontend assets from builder
-COPY --from=builder /app/dist /usr/share/nginx/html
+# Copy built frontend assets from the host's dist folder
+# This assumes 'npm run build' was executed on the host.
+COPY dist /usr/share/nginx/html
 
 # Create non-root user for nginx
 RUN chown -R nginx:nginx /usr/share/nginx/html && \
