@@ -13,6 +13,114 @@ from app.services.agent_registry import agent_registry
 from app.models.server import Server
 
 
+def _fmt_bytes(n: int) -> str:
+    """Convert byte count to human-readable string (e.g. 4.2 GB)."""
+    if not n:
+        return '0 B'
+    for unit in ('B', 'KB', 'MB', 'GB', 'TB'):
+        if n < 1024:
+            return f'{n:.1f} {unit}'
+        n /= 1024
+    return f'{n:.1f} PB'
+
+
+def _normalize_agent_metrics(data: dict) -> dict:
+    """Convert the agent's flat SystemMetrics struct to the nested shape the dashboard expects."""
+    mem_total = data.get('memory_total', 0)
+    mem_used  = data.get('memory_used',  0)
+    mem_free  = max(mem_total - mem_used, 0)
+
+    swap_total = data.get('swap_total', 0)
+    swap_used  = data.get('swap_used',  0)
+
+    disk_total = data.get('disk_total', 0)
+    disk_used  = data.get('disk_used',  0)
+    disk_free  = max(disk_total - disk_used, 0)
+
+    net_rx = data.get('network_rx', 0)
+    net_tx = data.get('network_tx', 0)
+
+    return {
+        'cpu': {
+            'percent':        data.get('cpu_percent', 0),
+            'count_logical':  data.get('cpu_threads', data.get('cpu_cores', 0)),
+            'count_physical': data.get('cpu_cores', 0),
+            'per_core':       data.get('cpu_per_core', []),
+        },
+        'memory': {
+            'ram': {
+                'total':        mem_total,
+                'used':         mem_used,
+                'free':         mem_free,
+                'percent':      data.get('memory_percent', 0),
+                'total_human':  _fmt_bytes(mem_total),
+                'used_human':   _fmt_bytes(mem_used),
+                'free_human':   _fmt_bytes(mem_free),
+                'cached_human': '0 B',
+            },
+            'swap': {
+                'total':       swap_total,
+                'used':        swap_used,
+                'percent':     data.get('swap_percent', 0),
+                'total_human': _fmt_bytes(swap_total),
+                'used_human':  _fmt_bytes(swap_used),
+            },
+        },
+        'disk': {
+            'partitions': [{
+                'device':      '/',
+                'mountpoint':  '/',
+                'total':       disk_total,
+                'used':        disk_used,
+                'free':        disk_free,
+                'percent':     data.get('disk_percent', 0),
+                'total_human': _fmt_bytes(disk_total),
+                'used_human':  _fmt_bytes(disk_used),
+                'free_human':  _fmt_bytes(disk_free),
+            }],
+        },
+        'network': {
+            'io': {
+                'bytes_recv':       net_rx,
+                'bytes_sent':       net_tx,
+                'bytes_recv_human': _fmt_bytes(net_rx),
+                'bytes_sent_human': _fmt_bytes(net_tx),
+                'bytes_recv_rate':  data.get('network_rx_rate', 0),
+                'bytes_sent_rate':  data.get('network_tx_rate', 0),
+            },
+        },
+        'system': {
+            'uptime_seconds': data.get('uptime', 0),
+            'hostname':       data.get('hostname', ''),
+            'kernel':         data.get('kernel_version', ''),
+            'ip_address':     '',
+        },
+        'load_average': {
+            '1min':  data.get('load_avg_1', 0),
+            '5min':  data.get('load_avg_5', 0),
+            '15min': data.get('load_avg_15', 0),
+        },
+        'timestamp': data.get('timestamp', ''),
+    }
+
+
+def _normalize_agent_system_info(data: dict) -> dict:
+    """Convert the agent's flat SystemInfo struct to the shape the dashboard expects."""
+    return {
+        'hostname':      data.get('hostname', ''),
+        'platform':      data.get('os', ''),
+        'kernel':        data.get('kernel_version', ''),
+        'architecture':  data.get('architecture', ''),
+        'ip_address':    '',
+        'cpu': {
+            'model':        data.get('cpu_model', ''),
+            'architecture': data.get('architecture', ''),
+            'cores':        data.get('cpu_cores', 0),
+            'threads':      data.get('cpu_threads', 0),
+        },
+    }
+
+
 class RemoteDockerService:
     """
     Service for executing Docker commands on remote servers.
@@ -351,12 +459,15 @@ class RemoteDockerService:
             except Exception as e:
                 return {'success': False, 'error': str(e)}
 
-        return agent_registry.send_command(
+        result = agent_registry.send_command(
             server_id=server_id,
             action='system:metrics',
             params={},
             user_id=user_id
         )
+        if result.get('success') and isinstance(result.get('data'), dict):
+            result['data'] = _normalize_agent_metrics(result['data'])
+        return result
 
     @staticmethod
     def get_system_info(server_id: str, user_id: int = None) -> Dict[str, Any]:
@@ -369,12 +480,15 @@ class RemoteDockerService:
             except Exception as e:
                 return {'success': False, 'error': str(e)}
 
-        return agent_registry.send_command(
+        result = agent_registry.send_command(
             server_id=server_id,
             action='system:info',
             params={},
             user_id=user_id
         )
+        if result.get('success') and isinstance(result.get('data'), dict):
+            result['data'] = _normalize_agent_system_info(result['data'])
+        return result
 
     # ==================== Utility ====================
 
