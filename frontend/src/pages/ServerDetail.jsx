@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import { copyToClipboard as clipboardWrite } from '../utils/clipboard';
 import { useToast } from '../contexts/ToastContext';
 import MetricsGraph from '../components/MetricsGraph';
 import { useConfirm } from '../hooks/useConfirm';
@@ -681,7 +682,7 @@ const AgentRegistrationSection = ({ server, onRegenerateToken }) => {
 Install-ServerKitAgent -Server "${window.location.origin}" -Token "${token}"` : '';
 
     function copyToClipboard(text) {
-        navigator.clipboard.writeText(text);
+        clipboardWrite(text);
         setCopied(true);
         toast.success('Copied to clipboard');
         setTimeout(() => setCopied(false), 2000);
@@ -1112,7 +1113,7 @@ const TokenModal = ({ server, onClose }) => {
 Install-ServerKitAgent -Server "${window.location.origin}" -Token "${token}"` : '';
 
     function copyToClipboard(text) {
-        navigator.clipboard.writeText(text);
+        clipboardWrite(text);
         toast.success('Copied to clipboard');
     }
 

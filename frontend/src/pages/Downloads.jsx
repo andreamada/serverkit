@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
+import { copyToClipboard as clipboardWrite } from '../utils/clipboard';
 
 // Platform icons as SVG components
 const LinuxIcon = () => (
@@ -83,7 +84,7 @@ function Downloads() {
 
     const copyToClipboard = async (text, commandId) => {
         try {
-            await navigator.clipboard.writeText(text);
+            await clipboardWrite(text);
             setCopiedCommand(commandId);
             setTimeout(() => setCopiedCommand(null), 2000);
         } catch (err) {

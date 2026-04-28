@@ -1,4 +1,5 @@
 import os
+import sqlite3 as _sqlite3
 from flask import Flask, send_from_directory, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import JWTManager
@@ -6,12 +7,30 @@ from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_migrate import Migrate
+from sqlalchemy import event
+from sqlalchemy.engine import Engine
 
 from config import config
 
 db = SQLAlchemy()
 jwt = JWTManager()
 migrate = Migrate()
+
+
+@event.listens_for(Engine, "connect")
+def _sqlite_configure(dbapi_conn, _):
+    """Set SQLite pragmas on every new connection.
+
+    DELETE journal mode avoids the /dev/shm shared-memory requirement of WAL mode
+    that causes 'attempt to write a readonly database' on some VPS/container providers.
+    """
+    if not isinstance(dbapi_conn, _sqlite3.Connection):
+        return
+    cur = dbapi_conn.cursor()
+    cur.execute("PRAGMA journal_mode=DELETE")
+    cur.execute("PRAGMA synchronous=NORMAL")
+    cur.execute("PRAGMA foreign_keys=ON")
+    cur.close()
 
 # PyJWT 2.10+ enforces that 'sub' must be a string.
 # Stringify the identity so integer user IDs work transparently.

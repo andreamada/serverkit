@@ -292,6 +292,7 @@ print_info "Creating directories..."
 mkdir -p "$LOG_DIR"
 mkdir -p "$DATA_DIR"
 mkdir -p "$INSTALL_DIR/backend/instance"
+chmod 755 "$INSTALL_DIR/backend/instance"
 mkdir -p "$INSTALL_DIR/nginx/ssl"
 mkdir -p /etc/serverkit/templates
 mkdir -p /var/serverkit/apps

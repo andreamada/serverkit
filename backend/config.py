@@ -38,6 +38,13 @@ class Config:
             
     SQLALCHEMY_DATABASE_URI = db_url or f'sqlite:///{default_db_path}'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    # Use DELETE journal mode: no /dev/shm dependency, works in all container environments.
+    # WAL mode can fail with "attempt to write a readonly database" when /dev/shm is
+    # restricted (common on some VPS/container providers).
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        'connect_args': {'check_same_thread': False},
+        'pool_pre_ping': True,
+    }
 
     # JWT
     JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY', 'jwt-secret-key-change-in-production')

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
 import { useToast } from '../contexts/ToastContext';
+import { copyToClipboard as clipboardWrite } from '../utils/clipboard';
 
 const Servers = () => {
     const [servers, setServers] = useState([]);
@@ -341,7 +342,7 @@ const AddServerModal = ({ groups, onClose, onCreated }) => {
     }
 
     function copyToClipboard(text) {
-        navigator.clipboard.writeText(text);
+        clipboardWrite(text);
         toast.success('Copied to clipboard');
     }
 

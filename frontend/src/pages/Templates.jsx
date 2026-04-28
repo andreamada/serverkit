@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { copyToClipboard } from '../utils/clipboard';
 import {
     Search, X, Star, ExternalLink, BookOpen, Container, Globe, BarChart3,
     Database, Shield, Cloud, MessageSquare, Video, Music, Image, Home,
@@ -549,7 +550,7 @@ const Templates = () => {
                                             <button
                                                 className="copy-btn"
                                                 onClick={() => {
-                                                    navigator.clipboard.writeText('docker-compose.yml available after install');
+                                                    copyToClipboard('docker-compose.yml available after install');
                                                     setCopiedCompose(true);
                                                     setTimeout(() => setCopiedCompose(false), 2000);
                                                 }}
