@@ -1097,18 +1097,30 @@ def list_remote_networks(server_id):
     return jsonify(result.get('data', []))
 
 
+def _handle_agent_response(result):
+    """Common handler for agent service responses to return appropriate HTTP status codes."""
+    if result.get('success'):
+        return jsonify(result.get('data'))
+    
+    code = result.get('code')
+    status = 500
+    if code == 'PERMISSION_DENIED':
+        status = 403
+    elif code == 'AGENT_OFFLINE':
+        status = 503
+    elif code == 'TIMEOUT':
+        status = 504
+        
+    return jsonify(result), status
+
+
 @servers_bp.route('/<server_id>/system/metrics', methods=['GET'])
 @jwt_required()
 def get_remote_system_metrics(server_id):
     """Get system metrics from a remote server"""
     user_id = get_jwt_identity()
-
     result = RemoteDockerService.get_system_metrics(server_id, user_id=user_id)
-
-    if not result.get('success'):
-        return jsonify(result), 500
-
-    return jsonify(result.get('data'))
+    return _handle_agent_response(result)
 
 
 @servers_bp.route('/<server_id>/system/info', methods=['GET'])
@@ -1116,13 +1128,8 @@ def get_remote_system_metrics(server_id):
 def get_remote_system_info(server_id):
     """Get system info from a remote server"""
     user_id = get_jwt_identity()
-
     result = RemoteDockerService.get_system_info(server_id, user_id=user_id)
-
-    if not result.get('success'):
-        return jsonify(result), 500
-
-    return jsonify(result.get('data'))
+    return _handle_agent_response(result)
 
 
 # ==================== Remote Docker Compose Operations ====================

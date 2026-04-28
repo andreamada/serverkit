@@ -379,6 +379,7 @@ class AgentRegistry:
         # Check permissions
         server = Server.query.get(server_id)
         if server and not server.has_permission(action):
+            logger.warning(f"Permission denied: server={server_id}, action={action}, server_perms={server.permissions}")
             return {
                 'success': False,
                 'error': f'Permission denied for action: {action}',

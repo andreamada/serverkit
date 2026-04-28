@@ -247,36 +247,63 @@ class Server(db.Model):
 
     def has_permission(self, scope):
         """Check if server/agent has a specific permission scope"""
-        if not self.permissions:
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        # Ensure scope is a string
+        scope = str(scope)
+        
+        # Ensure permissions is a list
+        perms = self.permissions
+        if perms is None:
+            perms = []
+        if isinstance(perms, str):
+            import json
+            try:
+                perms = json.loads(perms)
+            except:
+                perms = [perms]
+        if not isinstance(perms, list):
+            perms = []
+
+        if not perms:
+            logger.debug(f"Permission check for {scope}: False (no permissions)")
             return False
-        if '*' in self.permissions:
+        
+        if '*' in perms:
+            logger.debug(f"Permission check for {scope}: True (wildcard *)")
             return True
 
         # Check exact match
-        if scope in self.permissions:
+        if scope in perms:
+            logger.debug(f"Permission check for {scope}: True (exact match)")
             return True
 
         scope_parts = scope.split(':')
-        for perm in self.permissions:
+        for perm in perms:
+            perm = str(perm)
             perm_parts = perm.split(':')
 
             # Handle wildcard match (e.g., 'docker:*' matches 'docker:container:list')
             if '*' in perm_parts:
                 star_idx = perm_parts.index('*')
                 if scope_parts[:star_idx] == perm_parts[:star_idx]:
+                    logger.debug(f"Permission check for {scope}: True (wildcard match with {perm})")
                     return True
 
             # Handle sub-scope match (e.g., 'system:metrics:read' matches 'system:metrics')
-            # This is useful for backward compatibility with old permission formats
             if len(perm_parts) > len(scope_parts):
                 if perm_parts[:len(scope_parts)] == scope_parts:
+                    logger.debug(f"Permission check for {scope}: True (sub-scope match with {perm})")
                     return True
 
             # Handle parent-scope match (e.g., 'system:metrics' matches 'system:metrics:read')
             if len(scope_parts) > len(perm_parts):
                 if scope_parts[:len(perm_parts)] == perm_parts:
+                    logger.debug(f"Permission check for {scope}: True (parent-scope match with {perm})")
                     return True
 
+        logger.debug(f"Permission check for {scope}: False (no match found in {perms})")
         return False
 
     def to_dict(self, include_metrics=False):
