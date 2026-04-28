@@ -29,12 +29,18 @@ PERMISSION_PROFILES = {
         'name': 'Docker Read-Only',
         'description': 'View containers, images, and metrics',
         'permissions': [
-            'docker:container:read',
-            'docker:image:read',
-            'docker:compose:read',
-            'docker:volume:read',
-            'docker:network:read',
-            'system:metrics:read',
+            'docker:container:list',
+            'docker:container:inspect',
+            'docker:container:stats',
+            'docker:container:logs',
+            'docker:image:list',
+            'docker:compose:list',
+            'docker:compose:ps',
+            'docker:compose:logs',
+            'docker:volume:list',
+            'docker:network:list',
+            'system:metrics',
+            'system:info',
         ]
     },
     'docker_manager': {
@@ -46,8 +52,9 @@ PERMISSION_PROFILES = {
             'docker:compose:*',
             'docker:volume:*',
             'docker:network:*',
-            'system:metrics:read',
-            'system:logs:read',
+            'system:metrics',
+            'system:info',
+            'system:processes',
         ]
     },
     'full_access': {
