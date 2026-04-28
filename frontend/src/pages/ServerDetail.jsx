@@ -38,9 +38,7 @@ const ServerDetail = () => {
         if (!server || server.status !== 'online') return;
         try {
             const data = await api.getRemoteSystemMetrics(id);
-            if (data.success) {
-                setMetrics(data.data);
-            }
+            setMetrics(data);
         } catch (err) {
             console.error('Failed to load metrics:', err);
         }
@@ -50,9 +48,7 @@ const ServerDetail = () => {
         if (!server || server.status !== 'online') return;
         try {
             const data = await api.getRemoteSystemInfo(id);
-            if (data.success) {
-                setSystemInfo(data.data);
-            }
+            setSystemInfo(data);
         } catch (err) {
             console.error('Failed to load system info:', err);
         }
@@ -320,8 +316,8 @@ const OverviewTab = ({ server, metrics, systemInfo }) => {
                         <div className="info-item">
                             <span className="info-label">CPU</span>
                             <span className="info-value">
-                                {systemInfo?.cpu_model || 'N/A'}
-                                {systemInfo?.cpu_cores && ` (${systemInfo.cpu_cores} cores)`}
+                                {systemInfo?.cpu?.model || systemInfo?.cpu_model || 'N/A'}
+                                {(systemInfo?.cpu?.cores || systemInfo?.cpu_cores) && ` (${systemInfo?.cpu?.cores || systemInfo?.cpu_cores} cores)`}
                             </span>
                         </div>
                         <div className="info-item">
@@ -352,7 +348,7 @@ const OverviewTab = ({ server, metrics, systemInfo }) => {
                         </div>
                         <div className="info-item">
                             <span className="info-label">Uptime</span>
-                            <span className="info-value">{formatUptime(metrics?.uptime)}</span>
+                            <span className="info-value">{formatUptime(metrics?.system?.uptime_seconds)}</span>
                         </div>
                     </div>
                 </div>
@@ -361,9 +357,9 @@ const OverviewTab = ({ server, metrics, systemInfo }) => {
                     <div className="info-card metrics-card">
                         <h3>Current Resources</h3>
                         <div className="resource-meters">
-                            <ResourceMeter label="CPU" value={metrics.cpu_percent} color="#6366F1" />
-                            <ResourceMeter label="Memory" value={metrics.memory_percent} color="#10B981" />
-                            <ResourceMeter label="Disk" value={metrics.disk_percent} color="#F59E0B" />
+                            <ResourceMeter label="CPU" value={metrics?.cpu?.percent} color="#6366F1" />
+                            <ResourceMeter label="Memory" value={metrics?.memory?.ram?.percent} color="#10B981" />
+                            <ResourceMeter label="Disk" value={metrics?.disk?.partitions?.[0]?.percent} color="#F59E0B" />
                         </div>
                     </div>
                 )}
@@ -635,27 +631,27 @@ const MetricsTab = ({ serverId, metrics }) => {
                         <div className="live-stats-grid">
                             <div className="live-stat">
                                 <span className="live-stat-label">CPU</span>
-                                <span className="live-stat-value">{(metrics.cpu_percent || 0).toFixed(1)}%</span>
+                                <span className="live-stat-value">{(metrics?.cpu?.percent || 0).toFixed(1)}%</span>
                             </div>
                             <div className="live-stat">
                                 <span className="live-stat-label">Memory</span>
-                                <span className="live-stat-value">{(metrics.memory_percent || 0).toFixed(1)}%</span>
+                                <span className="live-stat-value">{(metrics?.memory?.ram?.percent || 0).toFixed(1)}%</span>
                             </div>
                             <div className="live-stat">
                                 <span className="live-stat-label">Disk</span>
-                                <span className="live-stat-value">{(metrics.disk_percent || 0).toFixed(1)}%</span>
+                                <span className="live-stat-value">{(metrics?.disk?.partitions?.[0]?.percent || 0).toFixed(1)}%</span>
                             </div>
                             <div className="live-stat">
                                 <span className="live-stat-label">Net TX</span>
-                                <span className="live-stat-value">{formatBytes(metrics.network_sent)}/s</span>
+                                <span className="live-stat-value">{formatBytes(metrics?.network?.io?.bytes_sent_rate)}/s</span>
                             </div>
                             <div className="live-stat">
                                 <span className="live-stat-label">Net RX</span>
-                                <span className="live-stat-value">{formatBytes(metrics.network_recv)}/s</span>
+                                <span className="live-stat-value">{formatBytes(metrics?.network?.io?.bytes_recv_rate)}/s</span>
                             </div>
                             <div className="live-stat">
-                                <span className="live-stat-label">Containers</span>
-                                <span className="live-stat-value">{metrics.container_running || 0} / {metrics.container_count || 0}</span>
+                                <span className="live-stat-label">Uptime</span>
+                                <span className="live-stat-value">{(() => { const s = metrics?.system?.uptime_seconds; if (!s) return 'N/A'; const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60); return d > 0 ? `${d}d ${h}h` : `${h}h ${m}m`; })()}</span>
                             </div>
                         </div>
                     </div>

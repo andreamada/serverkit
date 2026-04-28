@@ -24,6 +24,23 @@ def _fmt_bytes(n: int) -> str:
     return f'{n:.1f} PB'
 
 
+def _time_from_agent_timestamp(ts_ms) -> dict:
+    """Build a time dict from the agent's Unix-millisecond timestamp (UTC)."""
+    from datetime import datetime as _dt
+    try:
+        dt = _dt.utcfromtimestamp(int(ts_ms) / 1000) if ts_ms else _dt.utcnow()
+    except (TypeError, ValueError, OSError):
+        dt = _dt.utcnow()
+    return {
+        'current_time':           dt.isoformat(),
+        'current_time_formatted': dt.strftime('%Y-%m-%d %H:%M:%S'),
+        'timezone_id':            'UTC',
+        'timezone_name':          'UTC',
+        'utc_offset':             'UTC+0:00',
+        'utc_offset_seconds':     0,
+    }
+
+
 def _normalize_agent_metrics(data: dict) -> dict:
     """Convert the agent's flat SystemMetrics struct to the nested shape the dashboard expects."""
     mem_total = data.get('memory_total', 0)
@@ -100,6 +117,7 @@ def _normalize_agent_metrics(data: dict) -> dict:
             '5min':  data.get('load_avg_5', 0),
             '15min': data.get('load_avg_15', 0),
         },
+        'time':      _time_from_agent_timestamp(data.get('timestamp')),
         'timestamp': data.get('timestamp', ''),
     }
 
@@ -108,10 +126,18 @@ def _normalize_agent_system_info(data: dict) -> dict:
     """Convert the agent's flat SystemInfo struct to the shape the dashboard expects."""
     return {
         'hostname':      data.get('hostname', ''),
-        'platform':      data.get('os', ''),
+        'os':            data.get('os', ''),
+        'platform':      data.get('platform', data.get('os', '')),
         'kernel':        data.get('kernel_version', ''),
         'architecture':  data.get('architecture', ''),
         'ip_address':    '',
+        # Flat keys kept for OverviewTab compatibility
+        'cpu_model':     data.get('cpu_model', ''),
+        'cpu_cores':     data.get('cpu_cores', 0),
+        'cpu_threads':   data.get('cpu_threads', 0),
+        'total_memory':  data.get('total_memory', 0),
+        'total_disk':    data.get('total_disk', 0),
+        # Nested keys for Dashboard compatibility
         'cpu': {
             'model':        data.get('cpu_model', ''),
             'architecture': data.get('architecture', ''),
@@ -466,7 +492,11 @@ class RemoteDockerService:
             user_id=user_id
         )
         if result.get('success') and isinstance(result.get('data'), dict):
-            result['data'] = _normalize_agent_metrics(result['data'])
+            normalized = _normalize_agent_metrics(result['data'])
+            server = Server.query.get(server_id)
+            if server:
+                normalized['system']['ip_address'] = server.ip_address or ''
+            result['data'] = normalized
         return result
 
     @staticmethod
@@ -487,7 +517,11 @@ class RemoteDockerService:
             user_id=user_id
         )
         if result.get('success') and isinstance(result.get('data'), dict):
-            result['data'] = _normalize_agent_system_info(result['data'])
+            normalized = _normalize_agent_system_info(result['data'])
+            server = Server.query.get(server_id)
+            if server:
+                normalized['ip_address'] = server.ip_address or ''
+            result['data'] = normalized
         return result
 
     # ==================== Utility ====================
