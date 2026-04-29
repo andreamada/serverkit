@@ -152,13 +152,6 @@ const ServerDetail = () => {
         );
     }
 
-    const statusColors = {
-        online: '#10B981',
-        offline: '#EF4444',
-        connecting: '#F59E0B',
-        pending: '#6B7280'
-    };
-
     const tabs = [
         { id: 'overview', label: 'Overview' },
         { id: 'docker', label: 'Docker' },
@@ -168,35 +161,55 @@ const ServerDetail = () => {
 
     return (
         <div className="server-detail-page">
-            <div className="page-header">
-                <div className="page-breadcrumb">
-                    <Link to="/servers">Servers</Link>
-                    <span className="breadcrumb-separator">/</span>
-                    <span>{server.name}</span>
-                </div>
-                <div className="page-header-content">
-                    <div className="server-title">
-                        <div
-                            className="status-dot large"
-                            style={{ backgroundColor: statusColors[server.status] }}
-                            title={server.status}
-                        />
-                        <h1>{server.name}</h1>
+            <div className="page-breadcrumb">
+                <Link to="/servers">Servers</Link>
+                <span className="breadcrumb-separator">/</span>
+                <span>{server.name}</span>
+            </div>
+
+            <header className="server-detail-header">
+                <div className="server-detail-header__main">
+                    <div className={`server-detail-header__avatar server-detail-header__avatar--${server.status || 'pending'}`}>
+                        {(server.name || '?').charAt(0).toUpperCase()}
                     </div>
-                    <p className="page-description">
-                        {server.hostname || server.ip_address}
-                        {server.description && ` - ${server.description}`}
-                    </p>
+                    <div className="server-detail-header__identity">
+                        <div className="server-detail-header__title-row">
+                            <h1>{server.name}</h1>
+                            <span className={`status-pill status-pill--${server.status || 'pending'}`}>
+                                <span className="status-pill__dot" />
+                                {server.status || 'pending'}
+                            </span>
+                        </div>
+                        <div className="server-detail-header__meta">
+                            <span className="mono">{server.hostname || server.ip_address || 'No endpoint configured'}</span>
+                            {server.group_name && (
+                                <span className="server-detail-header__chip"><FolderTinyIcon /> {server.group_name}</span>
+                            )}
+                            {server.os_type && <span className="server-detail-header__chip">{server.os_type}</span>}
+                            {server.agent_version && <span className="server-detail-header__chip">agent {server.agent_version}</span>}
+                            {server.last_seen && (
+                                <span className="server-detail-header__chip">
+                                    last seen {new Date(server.last_seen).toLocaleString()}
+                                </span>
+                            )}
+                        </div>
+                        {server.description && (
+                            <p className="server-detail-header__description">{server.description}</p>
+                        )}
+                    </div>
                 </div>
-                <div className="page-header-actions">
+                <div className="server-detail-header__actions">
                     <button className="btn btn-secondary" onClick={handlePingServer}>
                         <RefreshIcon /> Ping
                     </button>
+                    <Link className="btn btn-secondary" to={`/servers/${id}/docker`}>
+                        Docker
+                    </Link>
                     <button className="btn btn-primary" onClick={handleGenerateToken}>
                         <KeyIcon /> Generate Token
                     </button>
                 </div>
-            </div>
+            </header>
 
             <div className="server-detail-tabs">
                 {tabs.map(t => (
@@ -1181,6 +1194,12 @@ Install-ServerKitAgent -Server "${window.location.origin}" -Token "${token}"` : 
 };
 
 // Icons
+const FolderTinyIcon = () => (
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+    </svg>
+);
+
 const RefreshIcon = () => (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
         <polyline points="23 4 23 10 17 10"/>
