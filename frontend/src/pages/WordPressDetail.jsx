@@ -69,6 +69,8 @@ const WordPressDetail = () => {
     const [site, setSite] = useState(null);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useTabParam(`/wordpress/${id}`, VALID_TABS);
+    const [domainInput, setDomainInput] = useState('');
+    const [domainSaving, setDomainSaving] = useState(false);
 
     useEffect(() => {
         loadSite();
@@ -83,6 +85,26 @@ const WordPressDetail = () => {
             toast.error('Failed to load WordPress site');
         } finally {
             setLoading(false);
+        }
+    }
+
+    async function handleDomainUpdate() {
+        const domain = domainInput.trim();
+        if (!domain) return;
+        setDomainSaving(true);
+        try {
+            const result = await wordpressApi.updateDomain(id, domain);
+            if (result.success) {
+                toast.success('Domain updated — nginx config regenerated');
+                setDomainInput('');
+                await loadSite();
+            } else {
+                toast.error(result.error || 'Failed to update domain');
+            }
+        } catch (err) {
+            toast.error(`Failed to update domain: ${err.message}`);
+        } finally {
+            setDomainSaving(false);
         }
     }
 
@@ -102,9 +124,9 @@ const WordPressDetail = () => {
     }
 
     const isRunning = site.status === 'running';
-    const siteUrl = site.port
-        ? `http://${window.location.hostname}:${site.port}`
-        : null;
+    const siteUrl = (site.url && !site.url.includes('localhost'))
+        ? site.url
+        : site.port ? `http://${window.location.hostname}:${site.port}` : null;
 
     return (
         <div className="app-detail-page wp-detail-page">
@@ -324,6 +346,39 @@ const OverviewTab = ({ site, onUpdate }) => {
                                     ) : '-'}
                                 </span>
                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="app-panel">
+                    <div className="app-panel-header">Domain</div>
+                    <div className="app-panel-body">
+                        <p className="app-info-hint">
+                            Current: <strong>{siteUrl || 'not set'}</strong>
+                            {siteUrl && !siteUrl.includes('localhost') && (
+                                <> — <a href={siteUrl} target="_blank" rel="noopener noreferrer">{siteUrl}</a></>
+                            )}
+                        </p>
+                        <p className="app-info-hint" style={{ marginTop: 4 }}>
+                            Enter a custom domain to replace the auto-generated one. Make sure DNS points to this server first.
+                        </p>
+                        <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                            <input
+                                type="text"
+                                className="form-control"
+                                placeholder="e.g. mysite.example.com"
+                                value={domainInput}
+                                onChange={e => setDomainInput(e.target.value)}
+                                onKeyDown={e => e.key === 'Enter' && handleDomainUpdate()}
+                                style={{ flex: 1 }}
+                            />
+                            <button
+                                className="btn btn-primary"
+                                onClick={handleDomainUpdate}
+                                disabled={domainSaving || !domainInput.trim()}
+                            >
+                                {domainSaving ? 'Saving…' : 'Update Domain'}
+                            </button>
                         </div>
                     </div>
                 </div>

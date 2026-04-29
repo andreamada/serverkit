@@ -927,9 +927,12 @@ RewriteRule ^wp-content/uploads/.*\\.php$ - [F]
                 site.application.status = 'stopped'
             site_data['status'] = site.application.status
 
-            # url is intentionally omitted — the frontend uses window.location.hostname + port
-            # so the link resolves correctly whether accessed via IP, domain, or ngrok
-            if site.application.port:
+            # Prefer primary domain (nginx-proxied), fall back to raw port
+            if site.application.domains:
+                primary = next((d for d in site.application.domains if d.is_primary), site.application.domains[0])
+                scheme = 'https' if primary.ssl_enabled else 'http'
+                site_data['url'] = f"{scheme}://{primary.name}"
+            elif site.application.port:
                 site_data['url'] = f"http://localhost:{site.application.port}"
         return site_data
 
@@ -1018,11 +1021,38 @@ RewriteRule ^wp-content/uploads/.*\\.php$ - [F]
             db.session.add(wp_site)
             db.session.commit()
 
+            # Auto-generate nip.io subdomain and nginx reverse proxy
+            subdomain = None
+            try:
+                from app.models.domain import Domain
+                from app.services.nginx_service import NginxService
+                from app.services.system_service import SystemService
+
+                server_ip = SystemService._get_primary_ip()
+                if server_ip and server_ip != 'Unknown':
+                    subdomain = f"{safe_name}.{server_ip}.nip.io"
+                    domain_record = Domain(name=subdomain, is_primary=True, application_id=app.id)
+                    db.session.add(domain_record)
+                    db.session.commit()
+
+                    nginx_result = NginxService.create_site(
+                        name=safe_name,
+                        app_type='docker',
+                        domains=[subdomain],
+                        root_path='',
+                        port=int(http_port)
+                    )
+                    if nginx_result.get('success'):
+                        NginxService.enable_site(safe_name)
+            except Exception:
+                pass  # nginx failure must not roll back site creation
+
             return {
                 'success': True,
                 'message': 'WordPress site created successfully',
                 'site': wp_site.to_dict(),
-                'http_port': http_port
+                'http_port': http_port,
+                'url': f"http://{subdomain}" if subdomain else None
             }
 
         except Exception as e:
@@ -1054,6 +1084,53 @@ RewriteRule ^wp-content/uploads/.*\\.php$ - [F]
 
             db.session.commit()
             return {'success': True, 'message': 'Site and all environments deleted'}
+
+        except Exception as e:
+            db.session.rollback()
+            return {'success': False, 'error': str(e)}
+
+    @classmethod
+    def update_domain(cls, site_id: int, new_domain: str) -> Dict:
+        """Set or replace the primary domain for a WordPress site and regenerate nginx config."""
+        from app import db
+        from app.models import WordPressSite
+        from app.models.domain import Domain
+        from app.services.nginx_service import NginxService
+
+        site = WordPressSite.query.get(site_id)
+        if not site:
+            return {'success': False, 'error': 'Site not found'}
+        if not site.application:
+            return {'success': False, 'error': 'No application linked to this site'}
+
+        new_domain = new_domain.strip().lower()
+
+        try:
+            # Replace existing primary domain, preserve any non-primary ones
+            existing = Domain.query.filter_by(name=new_domain, application_id=site.application.id).first()
+            if existing:
+                Domain.query.filter_by(application_id=site.application.id).filter(
+                    Domain.name != new_domain
+                ).update({'is_primary': False})
+                existing.is_primary = True
+            else:
+                Domain.query.filter_by(application_id=site.application.id, is_primary=True).update({'is_primary': False})
+                new_record = Domain(name=new_domain, is_primary=True, application_id=site.application.id)
+                db.session.add(new_record)
+
+            db.session.commit()
+
+            nginx_result = NginxService.create_site(
+                name=site.application.name,
+                app_type='docker',
+                domains=[new_domain],
+                root_path='',
+                port=site.application.port
+            )
+            if nginx_result.get('success'):
+                NginxService.enable_site(site.application.name)
+
+            return {'success': True, 'domain': new_domain, 'url': f"http://{new_domain}"}
 
         except Exception as e:
             db.session.rollback()
@@ -1189,6 +1266,13 @@ RewriteRule ^wp-content/uploads/.*\\.php$ - [F]
                 shutil.rmtree(root_path, ignore_errors=True)
 
         if wp_site.application:
+            try:
+                from app.services.nginx_service import NginxService
+                app_name = wp_site.application.name
+                NginxService.disable_site(app_name)
+                NginxService.delete_site(app_name)
+            except Exception:
+                pass
             db.session.delete(wp_site.application)
 
         db.session.delete(wp_site)

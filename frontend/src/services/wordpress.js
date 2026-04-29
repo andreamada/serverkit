@@ -17,6 +17,11 @@ const wordpressApi = {
         method: 'DELETE'
     }),
 
+    updateDomain: (id, domain) => api.request(`${BASE_PATH}/${id}/domain`, {
+        method: 'PUT',
+        body: { domain }
+    }),
+
     // Environment Management
     getEnvironments: (siteId) => api.request(`${BASE_PATH}/${siteId}/environments`),
 

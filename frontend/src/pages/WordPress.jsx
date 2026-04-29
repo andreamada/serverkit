@@ -138,7 +138,11 @@ function WordPress() {
                 </div>
             ) : (
                 <div className="wp-sites-grid">
-                    {sites.map(site => (
+                    {sites.map(site => {
+                        const siteUrl = (site.url && !site.url.includes('localhost'))
+                            ? site.url
+                            : site.port ? `http://${window.location.hostname}:${site.port}` : null;
+                        return (
                         <div
                             key={site.id}
                             className="wp-site-card"
@@ -154,8 +158,8 @@ function WordPress() {
                                 </div>
                                 <div className="wp-site-info">
                                     <h3 className="wp-site-name">{site.name || site.application?.name || `Site ${site.id}`}</h3>
-                                    {site.port && (
-                                        <span className="wp-site-url">:{site.port}</span>
+                                    {siteUrl && (
+                                        <span className="wp-site-url">{siteUrl.replace(/^https?:\/\//, '')}</span>
                                     )}
                                 </div>
                                 <div className={`wp-site-status ${site.status === 'running' ? 'running' : 'stopped'}`}>
@@ -174,10 +178,10 @@ function WordPress() {
                                         <span className="meta-value">{(site.environment_count || 0) + 1}</span>
                                     </div>
                                 </div>
-                                {site.port && site.status === 'running' && (
+                                {siteUrl && site.status === 'running' && (
                                     <div className="wp-site-card-links">
                                         <a
-                                            href={`http://${window.location.hostname}:${site.port}`}
+                                            href={siteUrl}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="wp-site-link"
@@ -187,7 +191,7 @@ function WordPress() {
                                             Open Site
                                         </a>
                                         <a
-                                            href={`http://${window.location.hostname}:${site.port}/wp-admin`}
+                                            href={`${siteUrl}/wp-admin`}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="wp-site-link"
@@ -200,7 +204,8 @@ function WordPress() {
                                 )}
                             </div>
                         </div>
-                    ))}
+                        );
+                    })}
                 </div>
             )}
 

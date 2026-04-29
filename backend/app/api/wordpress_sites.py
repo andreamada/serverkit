@@ -35,19 +35,21 @@ def list_sites():
     user_id = get_jwt_identity()
     include_envs = request.args.get('include_environments', 'false').lower() == 'true'
 
-    # Get all WordPress applications for this user
     sites = WordPressSite.query.join(Application).filter(
         Application.user_id == user_id,
         Application.app_type == 'wordpress'
     ).all()
 
-    # Separate production and environment sites
     production_sites = [s for s in sites if s.is_production]
+    result = []
+    for s in production_sites:
+        site_data = s.to_dict(include_environments=include_envs)
+        env_count = WordPressSite.query.filter_by(production_site_id=s.id).count()
+        site_data['environment_count'] = env_count
+        WordPressService._enrich_site_data(s, site_data)
+        result.append(site_data)
 
-    return jsonify({
-        'sites': [s.to_dict(include_environments=include_envs) for s in production_sites],
-        'total': len(production_sites)
-    })
+    return jsonify({'sites': result, 'total': len(result)})
 
 
 @wordpress_sites_bp.route('/sites', methods=['POST'])
@@ -211,6 +213,29 @@ def delete_site(site_id):
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+@wordpress_sites_bp.route('/sites/<int:site_id>/domain', methods=['PUT'])
+@jwt_required()
+def update_site_domain(site_id):
+    """Set or replace the primary domain for a WordPress site."""
+    user_id = get_jwt_identity()
+    data = request.get_json() or {}
+    new_domain = data.get('domain', '').strip()
+    if not new_domain:
+        return jsonify({'error': 'domain is required'}), 400
+
+    site = WordPressSite.query.join(Application).filter(
+        WordPressSite.id == site_id,
+        Application.user_id == user_id
+    ).first()
+    if not site:
+        return jsonify({'error': 'Site not found'}), 404
+
+    result = WordPressService.update_domain(site_id, new_domain)
+    if not result.get('success'):
+        return jsonify({'error': result.get('error')}), 400
+    return jsonify(result)
 
 
 # =============================================================================
