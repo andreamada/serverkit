@@ -1507,7 +1507,7 @@ def get_install_script_linux():
     # Replace placeholders with actual values
     server_url = request.url_root.rstrip('/')
     content = content.replace('https://your-serverkit.com', server_url)
-    content = content.replace('jhd3197/ServerKit', GITHUB_REPO)
+    content = content.replace('andreamada/ServerKit', GITHUB_REPO)
 
     return Response(
         content,
@@ -1542,7 +1542,7 @@ def get_install_script_windows():
     # Replace placeholders with actual values
     server_url = request.url_root.rstrip('/')
     content = content.replace('https://your-serverkit.com', server_url)
-    content = content.replace('jhd3197/ServerKit', GITHUB_REPO)
+    content = content.replace('andreamada/ServerKit', GITHUB_REPO)
 
     return Response(
         content,
@@ -1618,7 +1618,7 @@ _releases_cache = {
     'expires': None
 }
 
-GITHUB_REPO = os.environ.get('SERVERKIT_GITHUB_REPO', 'jhd3197/ServerKit')
+GITHUB_REPO = os.environ.get('SERVERKIT_GITHUB_REPO', 'andreamada/ServerKit')
 
 
 def _get_latest_agent_release():
@@ -1672,9 +1672,9 @@ def _get_latest_agent_release():
     result = fetch_from_repo(GITHUB_REPO)
     
     # Fallback to official repo if no releases found and we aren't already using it
-    if not result and GITHUB_REPO != 'jhd3197/ServerKit':
+    if not result and GITHUB_REPO != 'andreamada/ServerKit':
         current_app.logger.info(f"No releases found in {GITHUB_REPO}, falling back to official repo.")
-        result = fetch_from_repo('jhd3197/ServerKit')
+        result = fetch_from_repo('andreamada/ServerKit')
 
     if result:
         # Cache for 5 minutes
