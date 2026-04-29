@@ -84,7 +84,7 @@ class WordPressSite(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
-    application = db.relationship('Application', backref=db.backref('wp_site', uselist=False))
+    application = db.relationship('Application', backref=db.backref('wp_site', uselist=False, cascade='all, delete-orphan'))
     environments = db.relationship(
         'WordPressSite',
         backref=db.backref('production_site', remote_side=[id]),
@@ -95,13 +95,15 @@ class WordPressSite(db.Model):
         'SyncJob',
         foreign_keys='SyncJob.source_site_id',
         backref='source_site',
-        lazy='dynamic'
+        lazy='dynamic',
+        cascade='all, delete-orphan'
     )
     sync_jobs_as_target = db.relationship(
         'SyncJob',
         foreign_keys='SyncJob.target_site_id',
         backref='target_site',
-        lazy='dynamic'
+        lazy='dynamic',
+        cascade='all, delete-orphan'
     )
 
     def to_dict(self, include_environments=False, include_snapshots=False):

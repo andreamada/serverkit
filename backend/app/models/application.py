@@ -41,6 +41,8 @@ class Application(db.Model):
     # Use 'subquery' to eagerly load domains in a single query, avoiding N+1
     domains = db.relationship('Domain', backref='application', lazy='subquery', cascade='all, delete-orphan')
     linked_app = db.relationship('Application', remote_side=[id], backref='linked_from', foreign_keys=[linked_app_id])
+    env_variables = db.relationship('EnvironmentVariable', backref='application', cascade='all, delete-orphan')
+    env_variable_history = db.relationship('EnvironmentVariableHistory', backref='application', cascade='all, delete-orphan')
 
     def to_dict(self, include_linked=False):
         import json

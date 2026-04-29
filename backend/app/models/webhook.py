@@ -173,7 +173,7 @@ class GitDeployment(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     # Relationships
-    app = db.relationship('Application', backref=db.backref('git_deployments', lazy='dynamic'))
+    app = db.relationship('Application', backref=db.backref('git_deployments', lazy='dynamic', cascade='all, delete-orphan'))
     webhook = db.relationship('GitWebhook', backref=db.backref('deployments', lazy='dynamic'))
 
     def to_dict(self):

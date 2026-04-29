@@ -170,6 +170,8 @@ def get_site(site_id):
     result = site.to_dict(include_environments=include_envs, include_snapshots=include_snaps)
 
     # Add WordPress info from WP-CLI
+    WordPressService._enrich_site_data(site, result)
+
     if site.application and site.application.root_path:
         wp_info = WordPressService.get_wordpress_info(site.application.root_path)
         if wp_info:

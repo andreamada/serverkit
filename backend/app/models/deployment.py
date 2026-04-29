@@ -58,7 +58,7 @@ class Deployment(db.Model):
     extra_data = db.Column(db.Text, default='{}')
 
     # Relationships
-    app = db.relationship('Application', backref=db.backref('deployments', lazy='dynamic'))
+    app = db.relationship('Application', backref=db.backref('deployments', lazy='dynamic', cascade='all, delete-orphan'))
     deployer = db.relationship('User', backref=db.backref('user_deployments', lazy='dynamic'))
 
     def get_metadata(self):
@@ -193,7 +193,7 @@ class DeploymentDiff(db.Model):
 
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    deployment = db.relationship('Deployment', foreign_keys=[deployment_id], backref='diff')
+    deployment = db.relationship('Deployment', foreign_keys=[deployment_id], backref=db.backref('diff', uselist=False, cascade='all, delete-orphan'))
 
     def to_dict(self):
         return {
