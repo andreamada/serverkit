@@ -138,6 +138,7 @@ func (a *Agent) registerHandlers() {
 
 		// Docker network commands
 		a.handlers[protocol.ActionDockerNetworkList] = a.handleDockerNetworkList
+		a.handlers[protocol.ActionDockerNetworkRemove] = a.handleDockerNetworkRemove
 
 		// Docker compose commands
 		a.handlers[protocol.ActionDockerComposeList] = a.handleDockerComposeList
@@ -773,6 +774,16 @@ func (a *Agent) handleDockerVolumeRemove(ctx context.Context, params json.RawMes
 
 func (a *Agent) handleDockerNetworkList(ctx context.Context, params json.RawMessage) (interface{}, error) {
 	return a.docker.ListNetworks(ctx)
+}
+
+func (a *Agent) handleDockerNetworkRemove(ctx context.Context, params json.RawMessage) (interface{}, error) {
+	var p struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal(params, &p); err != nil {
+		return nil, fmt.Errorf("invalid params: %w", err)
+	}
+	return map[string]bool{"success": true}, a.docker.RemoveNetwork(ctx, p.ID)
 }
 
 // System command handlers

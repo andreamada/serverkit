@@ -22,6 +22,32 @@ from app.middleware.rbac import admin_required, developer_required
 servers_bp = Blueprint('servers', __name__)
 
 
+def _get_external_base_url():
+    """Return the public origin agents should use when this app sits behind a proxy."""
+    public_url = current_app.config.get('PUBLIC_URL') or os.environ.get('SERVERKIT_PUBLIC_URL')
+    if public_url:
+        return public_url.rstrip('/')
+
+    forwarded_proto = request.headers.get('X-Forwarded-Proto', request.scheme)
+    forwarded_host = request.headers.get('X-Forwarded-Host', request.host)
+
+    scheme = forwarded_proto.split(',')[0].strip() or request.scheme
+    host = forwarded_host.split(',')[0].strip() or request.host
+
+    return f"{scheme}://{host}".rstrip('/')
+
+
+def _get_external_websocket_url():
+    base_url = _get_external_base_url()
+
+    if base_url.startswith('https://'):
+        return f"wss://{base_url[len('https://'):]}/agent"
+    if base_url.startswith('http://'):
+        return f"ws://{base_url[len('http://'):]}/agent"
+
+    return f"{base_url}/agent"
+
+
 # ==================== Permission Profiles ====================
 
 PERMISSION_PROFILES = {
@@ -385,10 +411,6 @@ def register_agent():
 
     db.session.commit()
 
-    # Construct WebSocket URL
-    ws_scheme = 'wss' if request.is_secure else 'ws'
-    ws_url = f"{ws_scheme}://{request.host}/agent"
-
     # Security note: api_secret is returned once during registration so the agent
     # can store it. The server-side copy is stored encrypted. The registration token
     # is already cleared above (single-use), preventing re-registration.
@@ -397,7 +419,7 @@ def register_agent():
         'name': server.name,
         'api_key': api_key,
         'api_secret': api_secret,
-        'websocket_url': ws_url,
+        'websocket_url': _get_external_websocket_url(),
         'server_id': server.id
     })
 
@@ -1056,6 +1078,22 @@ def list_remote_volumes(server_id):
     return jsonify(result.get('data', []))
 
 
+@servers_bp.route('/<server_id>/docker/volumes/<volume_name>', methods=['DELETE'])
+@jwt_required()
+@developer_required
+def remove_remote_volume(server_id, volume_name):
+    """Remove a volume on a remote server"""
+    user_id = get_jwt_identity()
+    force = request.args.get('force', 'false').lower() == 'true'
+
+    result = RemoteDockerService.remove_volume(server_id, volume_name, force=force, user_id=user_id)
+
+    if not result.get('success'):
+        return jsonify(result), 500
+
+    return jsonify({'message': 'Volume removed'})
+
+
 @servers_bp.route('/<server_id>/docker/networks', methods=['GET'])
 @jwt_required()
 def list_remote_networks(server_id):
@@ -1068,6 +1106,21 @@ def list_remote_networks(server_id):
         return jsonify(result), 500
 
     return jsonify(result.get('data', []))
+
+
+@servers_bp.route('/<server_id>/docker/networks/<network_id>', methods=['DELETE'])
+@jwt_required()
+@developer_required
+def remove_remote_network(server_id, network_id):
+    """Remove a network on a remote server"""
+    user_id = get_jwt_identity()
+
+    result = RemoteDockerService.remove_network(server_id, network_id, user_id=user_id)
+
+    if not result.get('success'):
+        return jsonify(result), 500
+
+    return jsonify({'message': 'Network removed'})
 
 
 @servers_bp.route('/<server_id>/system/metrics', methods=['GET'])
@@ -1447,7 +1500,7 @@ def get_install_script_linux():
     the ServerKit agent on Linux systems.
 
     Usage:
-        curl -fsSL https://your-server/api/servers/install.sh | sudo bash -s -- \\
+        curl -fsSL https://your-server/api/v1/servers/install.sh | sudo bash -s -- \\
             --token "YOUR_TOKEN" --server "https://your-server"
     """
     script_path = os.path.join(_get_scripts_dir(), 'install.sh')
@@ -1459,7 +1512,7 @@ def get_install_script_linux():
         content = f.read()
 
     # Replace placeholders with actual values
-    server_url = request.url_root.rstrip('/')
+    server_url = _get_external_base_url()
     content = content.replace('https://your-serverkit.com', server_url)
     content = content.replace('jhd3197/ServerKit', GITHUB_REPO)
 
@@ -1482,7 +1535,7 @@ def get_install_script_windows():
     the ServerKit agent on Windows systems.
 
     Usage:
-        irm https://your-server/api/servers/install.ps1 | iex; \\
+        irm https://your-server/api/v1/servers/install.ps1 | iex; \\
             Install-ServerKitAgent -Token "YOUR_TOKEN" -Server "https://your-server"
     """
     script_path = os.path.join(_get_scripts_dir(), 'install.ps1')
@@ -1494,7 +1547,7 @@ def get_install_script_windows():
         content = f.read()
 
     # Replace placeholders with actual values
-    server_url = request.url_root.rstrip('/')
+    server_url = _get_external_base_url()
     content = content.replace('https://your-serverkit.com', server_url)
     content = content.replace('jhd3197/ServerKit', GITHUB_REPO)
 
@@ -1514,8 +1567,8 @@ def get_install_instructions(server_id):
     """
     Get installation instructions for a specific server.
 
-    Returns the installation commands with the server's registration token
-    already embedded.
+    Returns installation commands with the correct API endpoint. Registration
+    tokens are only shown when they are generated, so the UI supplies the token.
     """
     server = Server.query.get(server_id)
     if not server:
@@ -1535,8 +1588,8 @@ def get_install_instructions(server_id):
         }), 400
 
     # Get base URL
-    base_url = request.url_root.rstrip('/')
-    api_url = f"{base_url}/api/servers"
+    base_url = _get_external_base_url()
+    api_url = f"{base_url}/api/v1/servers"
 
     return jsonify({
         'linux': {

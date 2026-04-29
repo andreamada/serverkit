@@ -100,7 +100,7 @@ English | [Español](docs/README.es.md) | [中文版](docs/README.zh-CN.md) | [P
 
 **Agent-Based Architecture** — Go agent with HMAC-SHA256 authentication and real-time WebSocket gateway
 
-**Fleet Management** — Agent lifecycle control with version rollouts, approval queue, network discovery, and command queue
+**Fleet Management** — Agent inventory, connection status, approval queue, rollouts, discovery, and command queue
 
 **Fleet Monitor** — Cross-server heatmaps, metric comparison charts, alert thresholds, anomaly detection, and capacity forecasting
 
@@ -108,7 +108,7 @@ English | [Español](docs/README.es.md) | [中文版](docs/README.zh-CN.md) | [P
 
 **Server Templates** — Configuration templates with compliance tracking, drift detection, and auto-remediation
 
-**Remote Docker** — Manage containers, images, volumes, networks, and Compose projects across all servers
+**Remote Docker** — Agent-backed Docker operations for connected servers; remote app/site deployment is still evolving
 
 **API Key Rotation** — Secure credential rotation with acknowledgment handshake
 
@@ -280,7 +280,7 @@ See the [Installation Guide](docs/INSTALLATION.md) for step-by-step instructions
 - [x] Monitoring & alerts — Metrics, webhooks, uptime tracking
 - [x] Security — 2FA, ClamAV, file integrity, Fail2ban, Lynis
 - [x] Firewall — UFW/firewalld integration
-- [x] Multi-server management — Go agent, centralized dashboard
+- [x] Multi-server monitoring — Go agent, centralized dashboard
 - [x] Git deployment — Webhooks, auto-deploy, rollback, zero-downtime
 - [x] Backup & restore — S3, Backblaze B2, scheduled backups
 - [x] Email server — Postfix, Dovecot, DKIM/SPF/DMARC, Roundcube
@@ -290,6 +290,7 @@ See the [Installation Guide](docs/INSTALLATION.md) for step-by-step instructions
 - [x] Database migrations — Flask-Migrate/Alembic, versioned schema
 - [x] Agent fleet management — Version rollouts, approval queue, discovery, command queue
 - [x] Cross-server monitoring — Fleet heatmaps, comparison charts, anomaly detection, capacity forecasting
+- [ ] Remote app/site deployment through connected agents
 - [x] Agent plugin system — Extensible agent with capabilities, permissions, per-server install
 - [x] Server templates & config sync — Drift detection, compliance dashboards, auto-remediation
 - [x] Multi-tenancy — Workspaces with quotas, member management, isolation

@@ -54,6 +54,15 @@ class Server(db.Model):
     """Represents a remote server managed by ServerKit"""
     __tablename__ = 'servers'
 
+    DOCKER_READ_ACTIONS = {
+        'container': {'list', 'inspect', 'logs', 'stats'},
+        'image': {'list'},
+        'volume': {'list'},
+        'network': {'list'},
+        'compose': {'list', 'ps', 'logs'},
+    }
+    SYSTEM_READ_ACTIONS = {'metrics', 'info', 'processes'}
+
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
 
     # Basic Info
@@ -251,24 +260,60 @@ class Server(db.Model):
             return False
         if '*' in self.permissions:
             return True
-        # Check exact match or wildcard
-        scope_parts = scope.split(':')
+
+        candidate_scopes = self._expand_permission_scope(scope)
         for perm in self.permissions:
-            if perm == scope:
-                return True
-            # Check wildcard patterns like 'docker:*'
-            perm_parts = perm.split(':')
-            if len(perm_parts) <= len(scope_parts):
-                match = True
-                for i, part in enumerate(perm_parts):
-                    if part == '*':
-                        break
-                    if i >= len(scope_parts) or part != scope_parts[i]:
-                        match = False
-                        break
-                if match:
+            for candidate in candidate_scopes:
+                if self._permission_matches(perm, candidate):
                     return True
         return False
+
+    @classmethod
+    def _expand_permission_scope(cls, scope):
+        """Add profile and legacy aliases for an agent command scope."""
+        candidate_scopes = {scope}
+        scope_parts = scope.split(':')
+
+        if len(scope_parts) >= 3 and scope_parts[0] == 'docker':
+            resource = scope_parts[1]
+            action = scope_parts[2]
+            read_actions = cls.DOCKER_READ_ACTIONS.get(resource, set())
+
+            if action in read_actions:
+                candidate_scopes.add(f'docker:{resource}:read')
+                candidate_scopes.add('docker:read')
+            else:
+                candidate_scopes.add(f'docker:{resource}:write')
+                candidate_scopes.add('docker:write')
+
+        if len(scope_parts) >= 2 and scope_parts[0] == 'system':
+            action = scope_parts[1]
+            if action in cls.SYSTEM_READ_ACTIONS:
+                candidate_scopes.add(f'system:{action}:read')
+                candidate_scopes.add('system:metrics:read')
+                candidate_scopes.add('system:read')
+
+        return candidate_scopes
+
+    @staticmethod
+    def _permission_matches(permission, scope):
+        """Check exact and wildcard patterns like docker:* or docker:container:*."""
+        if permission == scope:
+            return True
+
+        scope_parts = scope.split(':')
+        perm_parts = permission.split(':')
+
+        if len(perm_parts) > len(scope_parts):
+            return False
+
+        for i, part in enumerate(perm_parts):
+            if part == '*':
+                return True
+            if i >= len(scope_parts) or part != scope_parts[i]:
+                return False
+
+        return True
 
     def to_dict(self, include_metrics=False):
         result = {

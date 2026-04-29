@@ -107,7 +107,7 @@ function Downloads() {
             icon: LinuxIcon,
             os: 'linux',
             archKey: 'amd64',
-            command: `curl -fsSL ${getBaseUrl()}/api/servers/install.sh | sudo bash -s -- --token "YOUR_TOKEN" --server "${getBaseUrl()}"`,
+            command: `curl -fsSL ${getBaseUrl()}/api/v1/servers/install.sh | sudo bash -s -- --token "YOUR_TOKEN" --server "${getBaseUrl()}"`,
         },
         {
             id: 'linux-arm64',
@@ -116,7 +116,7 @@ function Downloads() {
             icon: LinuxIcon,
             os: 'linux',
             archKey: 'arm64',
-            command: `curl -fsSL ${getBaseUrl()}/api/servers/install.sh | sudo bash -s -- --token "YOUR_TOKEN" --server "${getBaseUrl()}"`,
+            command: `curl -fsSL ${getBaseUrl()}/api/v1/servers/install.sh | sudo bash -s -- --token "YOUR_TOKEN" --server "${getBaseUrl()}"`,
         },
         {
             id: 'windows-amd64',
@@ -125,7 +125,7 @@ function Downloads() {
             icon: WindowsIcon,
             os: 'windows',
             archKey: 'amd64',
-            command: `irm ${getBaseUrl()}/api/servers/install.ps1 | iex; Install-ServerKitAgent -Token "YOUR_TOKEN" -Server "${getBaseUrl()}"`,
+            command: `irm ${getBaseUrl()}/api/v1/servers/install.ps1 | iex; Install-ServerKitAgent -Token "YOUR_TOKEN" -Server "${getBaseUrl()}"`,
         },
     ];
 
@@ -242,7 +242,7 @@ function Downloads() {
                     <section className="downloads-section">
                         <h2>Quick Install Commands</h2>
                         <p className="section-description">
-                            Use these one-liner commands to download and install the agent. Replace <code>YOUR_TOKEN</code> with your server's registration token.
+                            Use these one-liner commands to download and install the agent. Replace <code>YOUR_TOKEN</code> with the server registration token.
                         </p>
 
                         <div className="install-commands">
@@ -314,7 +314,7 @@ function Downloads() {
                                 <div className="step-content">
                                     <h4>Register the Agent</h4>
                                     <p>Run the registration command with your token:</p>
-                                    <pre><code>serverkit-agent register --token "YOUR_TOKEN" --server "{getBaseUrl()}"</code></pre>
+                                    <pre><code>{`serverkit-agent register --token "YOUR_TOKEN" --server "${getBaseUrl()}"`}</code></pre>
                                 </div>
                             </div>
                             <div className="step">

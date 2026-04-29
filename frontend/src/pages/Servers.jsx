@@ -153,7 +153,7 @@ const Servers = () => {
                     <h3>No servers found</h3>
                     <p>
                         {servers.length === 0
-                            ? 'Add your first server to start managing remote infrastructure.'
+                            ? 'Add your first server to connect an agent for monitoring and supported remote Docker actions.'
                             : 'No servers match your current filters.'}
                     </p>
                     {servers.length === 0 && (
@@ -312,7 +312,8 @@ const AddServerModal = ({ groups, onClose, onCreated }) => {
         group_id: '',
         hostname: '',
         ip_address: '',
-        permissions: ['docker:read', 'docker:write', 'system:read']
+        permission_profile: 'docker_manager',
+        permissions: []
     });
     const [registrationData, setRegistrationData] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -421,29 +422,12 @@ Install-ServerKitAgent -Server "${window.location.origin}" -Token "${registratio
                         </div>
 
                         <div className="form-group">
-                            <label>Permissions</label>
-                            <div className="permissions-grid">
-                                {[
-                                    { key: 'docker:read', label: 'Docker (Read)' },
-                                    { key: 'docker:write', label: 'Docker (Write)' },
-                                    { key: 'system:read', label: 'System Metrics' },
-                                    { key: 'system:exec', label: 'Remote Execution' }
-                                ].map(perm => (
-                                    <label key={perm.key} className="permission-checkbox">
-                                        <input
-                                            type="checkbox"
-                                            checked={formData.permissions.includes(perm.key)}
-                                            onChange={(e) => {
-                                                const newPerms = e.target.checked
-                                                    ? [...formData.permissions, perm.key]
-                                                    : formData.permissions.filter(p => p !== perm.key);
-                                                setFormData(prev => ({ ...prev, permissions: newPerms }));
-                                            }}
-                                        />
-                                        {perm.label}
-                                    </label>
-                                ))}
-                            </div>
+                            <label>Access Profile</label>
+                            <select name="permission_profile" value={formData.permission_profile} onChange={handleChange}>
+                                <option value="docker_manager">Docker Manager</option>
+                                <option value="docker_readonly">Docker Read-Only</option>
+                                <option value="full_access">Full Access</option>
+                            </select>
                         </div>
 
                         <div className="modal-actions">
@@ -460,15 +444,15 @@ Install-ServerKitAgent -Server "${window.location.origin}" -Token "${registratio
                         <div className="success-banner">
                             <CheckCircleIcon />
                             <div>
-                                <strong>Server registered successfully</strong>
+                                <strong>Agent token created</strong>
                                 <p className="success-subtitle">Run the install script on your target machine to connect the agent.</p>
                             </div>
                         </div>
 
                         <div className="install-tabs">
                             <InstallTab
-                                title="Linux / macOS"
-                                description="Ubuntu, Debian, CentOS, Fedora, Arch, macOS — requires curl and sudo"
+                                title="Linux"
+                                description="Linux server with curl, tar, sudo, and systemd"
                                 icon={<TerminalIcon />}
                                 script={linuxInstallScript}
                                 onCopy={() => copyToClipboard(linuxInstallScript)}
@@ -487,7 +471,7 @@ Install-ServerKitAgent -Server "${window.location.origin}" -Token "${registratio
                             <ol>
                                 <li>Copy and run the install script on your server</li>
                                 <li>The agent downloads, installs, and registers automatically</li>
-                                <li>Your server will appear as <strong>"Pending"</strong> until the agent connects, then switch to <strong>"Online"</strong></li>
+                                <li>Your server will appear as <strong>Pending</strong> until the agent connects, then switch to <strong>Online</strong></li>
                             </ol>
                             <p className="text-muted">
                                 The registration token expires in 24 hours. You can regenerate it from the server details page.

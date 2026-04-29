@@ -701,7 +701,7 @@ Install-ServerKitAgent -Server "${window.location.origin}" -Token "${token}"` : 
                     <div className="install-script-block">
                         <div className="install-script-header">
                             <TerminalIcon />
-                            <span>Linux / macOS</span>
+                            <span>Linux</span>
                             <button className="btn btn-sm btn-secondary" onClick={() => copyToClipboard(linuxScript)}>
                                 <CopyIcon /> Copy
                             </button>
@@ -1134,8 +1134,8 @@ Install-ServerKitAgent -Server "${window.location.origin}" -Token "${token}"` : 
                             <div className="install-tab-header">
                                 <TerminalIcon />
                                 <div className="install-tab-title">
-                                    <span>Linux / macOS</span>
-                                    <span className="install-tab-description">Ubuntu, Debian, CentOS, Fedora, Arch, macOS — requires curl and sudo</span>
+                                    <span>Linux</span>
+                                    <span className="install-tab-description">Linux server with curl, tar, sudo, and systemd</span>
                                 </div>
                                 <button className="btn btn-sm btn-secondary" onClick={() => copyToClipboard(linuxScript)}>
                                     <CopyIcon /> Copy
@@ -1164,7 +1164,7 @@ Install-ServerKitAgent -Server "${window.location.origin}" -Token "${token}"` : 
                         <ol>
                             <li>Copy and run the install script on your server</li>
                             <li>The agent downloads, installs, and registers automatically</li>
-                            <li>Your server will appear as <strong>"Pending"</strong> until the agent connects, then switch to <strong>"Online"</strong></li>
+                            <li>Your server will appear as <strong>Pending</strong> until the agent connects, then switch to <strong>Online</strong></li>
                         </ol>
                         <p className="text-muted">
                             The registration token expires in 24 hours. You can regenerate it from the server settings page.

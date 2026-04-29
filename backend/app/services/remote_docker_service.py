@@ -338,6 +338,24 @@ class RemoteDockerService:
             user_id=user_id
         )
 
+    @staticmethod
+    def remove_network(server_id: str, network_id: str, user_id: int = None) -> Dict[str, Any]:
+        """Remove a network on a remote server"""
+        if not server_id or server_id == 'local':
+            from app.services.docker_service import DockerService
+            try:
+                DockerService.remove_network(network_id)
+                return {'success': True}
+            except Exception as e:
+                return {'success': False, 'error': str(e)}
+
+        return agent_registry.send_command(
+            server_id=server_id,
+            action='docker:network:remove',
+            params={'id': network_id},
+            user_id=user_id
+        )
+
     # ==================== System ====================
 
     @staticmethod
