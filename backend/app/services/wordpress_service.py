@@ -927,7 +927,8 @@ RewriteRule ^wp-content/uploads/.*\\.php$ - [F]
                 site.application.status = 'stopped'
             site_data['status'] = site.application.status
 
-            # Build access URL from port
+            # url is intentionally omitted — the frontend uses window.location.hostname + port
+            # so the link resolves correctly whether accessed via IP, domain, or ngrok
             if site.application.port:
                 site_data['url'] = f"http://localhost:{site.application.port}"
         return site_data

@@ -174,10 +174,10 @@ function WordPress() {
                                         <span className="meta-value">{(site.environment_count || 0) + 1}</span>
                                     </div>
                                 </div>
-                                {site.url && site.status === 'running' && (
+                                {site.port && site.status === 'running' && (
                                     <div className="wp-site-card-links">
                                         <a
-                                            href={site.url}
+                                            href={`http://${window.location.hostname}:${site.port}`}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="wp-site-link"
@@ -187,7 +187,7 @@ function WordPress() {
                                             Open Site
                                         </a>
                                         <a
-                                            href={`${site.url}/wp-admin`}
+                                            href={`http://${window.location.hostname}:${site.port}/wp-admin`}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className="wp-site-link"
