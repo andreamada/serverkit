@@ -76,6 +76,22 @@ PERMISSION_PROFILES = {
             'system:logs:read',
         ]
     },
+    'deployment_runner': {
+        'name': 'Deployment Runner',
+        'description': 'Deploy and operate ServerKit-managed Docker Compose apps',
+        'permissions': [
+            'docker:container:*',
+            'docker:image:*',
+            'docker:compose:*',
+            'docker:volume:*',
+            'docker:network:*',
+            'file:read',
+            'file:write',
+            'file:list',
+            'system:metrics:read',
+            'system:logs:read',
+        ]
+    },
     'full_access': {
         'name': 'Full Access',
         'description': 'All permissions including system commands',

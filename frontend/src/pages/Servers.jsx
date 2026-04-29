@@ -312,7 +312,7 @@ const AddServerModal = ({ groups, onClose, onCreated }) => {
         group_id: '',
         hostname: '',
         ip_address: '',
-        permission_profile: 'docker_manager',
+        permission_profile: 'deployment_runner',
         permissions: []
     });
     const [registrationData, setRegistrationData] = useState(null);
@@ -424,6 +424,7 @@ Install-ServerKitAgent -Server "${window.location.origin}" -Token "${registratio
                         <div className="form-group">
                             <label>Access Profile</label>
                             <select name="permission_profile" value={formData.permission_profile} onChange={handleChange}>
+                                <option value="deployment_runner">Deployment Runner</option>
                                 <option value="docker_manager">Docker Manager</option>
                                 <option value="docker_readonly">Docker Read-Only</option>
                                 <option value="full_access">Full Access</option>

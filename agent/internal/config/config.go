@@ -122,7 +122,7 @@ func Default() *Config {
 			Docker:     true,
 			Metrics:    true,
 			Logs:       true,
-			FileAccess: false,
+			FileAccess: true,
 			Exec:       false,
 		},
 		Metrics: MetricsConfig{
@@ -136,7 +136,7 @@ func Default() *Config {
 			Timeout: 30 * time.Second,
 		},
 		Security: SecurityConfig{
-			AllowedPaths:    []string{},
+			AllowedPaths:    defaultAllowedPaths(),
 			BlockedCommands: []string{},
 			MaxExecTimeout:  5 * time.Minute,
 		},
@@ -326,6 +326,13 @@ func defaultLogPath() string {
 		return filepath.Join(os.Getenv("ProgramData"), "ServerKit", "Agent", "logs", "agent.log")
 	}
 	return "/var/log/serverkit-agent/agent.log"
+}
+
+func defaultAllowedPaths() []string {
+	if runtime.GOOS == "windows" {
+		return []string{filepath.Join(os.Getenv("ProgramData"), "ServerKit")}
+	}
+	return []string{"/var/lib/serverkit", "/var/serverkit"}
 }
 
 // getMachineKey generates a machine-specific encryption key

@@ -4,6 +4,7 @@ from app.models.domain import Domain
 from app.models.env_variable import EnvironmentVariable, EnvironmentVariableHistory
 from app.models.notification_preferences import NotificationPreferences
 from app.models.deployment import Deployment, DeploymentDiff
+from app.models.deployment_job import DeploymentJob, DeploymentJobLog
 from app.models.system_settings import SystemSettings
 from app.models.audit_log import AuditLog
 from app.models.metrics_history import MetricsHistory
@@ -32,7 +33,7 @@ from app.models.marketplace import Extension, ExtensionInstall
 
 __all__ = [
     'User', 'Application', 'Domain', 'EnvironmentVariable', 'EnvironmentVariableHistory',
-    'NotificationPreferences', 'Deployment', 'DeploymentDiff', 'SystemSettings', 'AuditLog',
+    'NotificationPreferences', 'Deployment', 'DeploymentDiff', 'DeploymentJob', 'DeploymentJobLog', 'SystemSettings', 'AuditLog',
     'MetricsHistory', 'Workflow', 'WorkflowExecution', 'WorkflowLog', 'GitWebhook', 'WebhookLog', 'GitDeployment',
     'Server', 'ServerGroup', 'ServerMetrics', 'ServerCommand', 'AgentSession', 'AgentVersion', 'AgentRollout', 'SecurityAlert',
     'WordPressSite', 'DatabaseSnapshot', 'SyncJob',

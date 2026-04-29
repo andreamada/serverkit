@@ -144,7 +144,9 @@ def create_app(config_name=None):
 
     # Register blueprints - Builds & Deployments
     from app.api.builds import builds_bp
+    from app.api.deployment_jobs import deployment_jobs_bp
     app.register_blueprint(builds_bp, url_prefix='/api/v1/builds')
+    app.register_blueprint(deployment_jobs_bp, url_prefix='/api/v1/deployment-jobs')
 
     # Register blueprints - Templates
     from app.api.templates import templates_bp
