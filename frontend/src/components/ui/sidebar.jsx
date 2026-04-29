@@ -298,7 +298,8 @@ function SidebarMenuSubButton({ asChild = false, isActive = false, size = 'md', 
             data-active={isActive}
             style={{
                 backgroundColor: isActive ? 'var(--accent-primary, hsl(var(--sidebar-accent)))' : hovered ? 'var(--accent-primary, hsl(var(--sidebar-accent)))' : 'transparent',
-                color: isActive || hovered ? 'white' : 'hsl(var(--sidebar-foreground) / 0.7)',
+                color: isActive || hovered ? 'white' : 'hsl(var(--sidebar-foreground))',
+                opacity: isActive || hovered ? 1 : 0.75,
                 fontWeight: isActive ? '500' : '400',
             }}
             className={cn(

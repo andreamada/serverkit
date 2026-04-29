@@ -5,7 +5,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { Star, Settings, LogOut, Sun, Moon, Monitor, ChevronRight, Layers, Palette, PanelLeft, Check, ChevronsUpDown } from 'lucide-react';
 import {
     DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
-    DropdownMenuSeparator, DropdownMenuLabel,
+    DropdownMenuSeparator, DropdownMenuLabel, DropdownMenuItem,
 } from './ui/dropdown-menu';
 import { api } from '../services/api';
 import ServerKitLogo from './ServerKitLogo';
@@ -269,9 +269,9 @@ const Sidebar = () => {
                                 <>
                                     <div className="grid flex-1 text-left text-sm leading-tight">
                                         <span className="truncate font-semibold" style={{color:'hsl(var(--sidebar-foreground))'}}>{user?.username || 'User'}</span>
-                                        <span className="truncate text-xs" style={{color:'hsl(var(--sidebar-foreground) / 0.6)'}}>{user?.email || 'admin'}</span>
+                                        <span className="truncate text-xs opacity-60" style={{color:'hsl(var(--sidebar-foreground))'}}>{user?.email || 'admin'}</span>
                                     </div>
-                                    <ChevronsUpDown className="ml-auto h-4 w-4" style={{color:'hsl(var(--sidebar-foreground) / 0.4)', flexShrink:0}} />
+                                    <ChevronsUpDown className="ml-auto h-4 w-4 opacity-40" style={{color:'hsl(var(--sidebar-foreground))', flexShrink:0}} />
                                 </>
                             )}
                         </SidebarMenuButton>

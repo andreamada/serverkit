@@ -85,7 +85,7 @@ export default function AppHeader() {
 
                 {/* Cart */}
                 <button
-                    className="relative inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none"
+                    className="relative inline-flex h-9 w-9 items-center justify-center rounded-md text-foreground opacity-70 transition-colors hover:bg-accent hover:opacity-100 focus-visible:outline-none"
                     title="Cart"
                 >
                     <ShoppingCart className="h-4.5 w-4.5" style={{ width: 18, height: 18 }} />
@@ -95,7 +95,7 @@ export default function AppHeader() {
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <button
-                            className="relative inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none"
+                            className="relative inline-flex h-9 w-9 items-center justify-center rounded-md text-foreground opacity-70 transition-colors hover:bg-accent hover:opacity-100 focus-visible:outline-none"
                             title="Notifications"
                         >
                             <Bell style={{ width: 18, height: 18 }} />
@@ -113,7 +113,7 @@ export default function AppHeader() {
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <button
-                            className="inline-flex h-9 items-center gap-1 rounded-md px-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none"
+                            className="inline-flex h-9 items-center gap-1 rounded-md px-2 text-sm text-foreground opacity-70 transition-colors hover:bg-accent hover:opacity-100 focus-visible:outline-none"
                             title="Language"
                         >
                             <Globe style={{ width: 16, height: 16 }} />

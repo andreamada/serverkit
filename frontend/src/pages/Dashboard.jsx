@@ -12,6 +12,11 @@ import useDashboardLayout from '../hooks/useDashboardLayout';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
+import {
+    DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
+    DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel,
+} from '../components/ui/dropdown-menu';
+import { ChevronDown, Check } from 'lucide-react';
 
 // Refresh interval options in seconds
 const REFRESH_OPTIONS = [
@@ -22,14 +27,12 @@ const REFRESH_OPTIONS = [
     { label: '1m', value: 60 },
 ];
 
-const ServerSelectorIcon = () => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <rect x="2" y="2" width="20" height="8" rx="2" ry="2"/>
-        <rect x="2" y="14" width="20" height="8" rx="2" ry="2"/>
-        <line x1="6" y1="6" x2="6.01" y2="6"/>
-        <line x1="6" y1="18" x2="6.01" y2="18"/>
-    </svg>
-);
+function StatusDot({ status }) {
+    const color = status === 'online' ? 'bg-green-500'
+        : status === 'offline' ? 'bg-red-500'
+        : 'bg-yellow-400';
+    return <span className={`inline-block h-2 w-2 rounded-full shrink-0 ${color}`} />;
+}
 
 const Dashboard = () => {
     const navigate = useNavigate();
@@ -251,16 +254,37 @@ const Dashboard = () => {
                 </div>
                 <div className="top-bar-right">
                     {servers.length > 1 && (
-                        <div className="server-selector">
-                            <ServerSelectorIcon />
-                            <select value={selectedServer.id} onChange={handleServerChange}>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <button className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-accent focus-visible:outline-none">
+                                    <StatusDot status={selectedServer.status || 'online'} />
+                                    <span>{selectedServer.name}</span>
+                                    <ChevronDown size={13} className="opacity-60" />
+                                </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-52">
+                                <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">Select Server</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
                                 {servers.map(server => (
-                                    <option key={server.id} value={server.id} disabled={server.status === 'offline'}>
-                                        {server.name} {server.status === 'offline' ? '(Offline)' : ''}
-                                    </option>
+                                    <DropdownMenuItem
+                                        key={server.id}
+                                        disabled={server.status === 'offline'}
+                                        onSelect={() => {
+                                            setSelectedServer(server);
+                                            lastServerUptime.current = null;
+                                            lastServerTime.current = null;
+                                            setLocalUptime(null);
+                                            setLocalTime(null);
+                                        }}
+                                        className="flex items-center gap-2 text-sm"
+                                    >
+                                        <StatusDot status={server.status || 'online'} />
+                                        <span className="flex-1">{server.name}</span>
+                                        {selectedServer.id === server.id && <Check size={13} className="text-foreground opacity-70" />}
+                                    </DropdownMenuItem>
                                 ))}
-                            </select>
-                        </div>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                     )}
                     <div className="clock-widget">
                         <span className="clock-time">{displayTime}</span>
