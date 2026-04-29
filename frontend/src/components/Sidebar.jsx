@@ -130,14 +130,7 @@ const Sidebar = () => {
                 {effectivelyHasChildren ? (
                     <>
                         <SidebarMenuButton
-                            onClick={() => {
-                                if (!sidebarOpen && visibleSubs.length > 0) {
-                                    navigate(visibleSubs[0].route);
-                                } else {
-                                    toggleExpand(item.id);
-                                }
-                            }}
-                            isActive={location.pathname.startsWith(item.route)}
+                            onClick={() => toggleExpand(item.id)}
                             tooltip={!sidebarOpen ? item.label : undefined}
                         >
                             <NavIcon icon={item.icon} />
@@ -146,6 +139,15 @@ const Sidebar = () => {
                         </SidebarMenuButton>
                         {sidebarOpen && isExpanded && visibleSubs.length > 0 && (
                             <SidebarMenuSub>
+                                <SidebarMenuSubItem key={`${item.id}-overview`}>
+                                    <SidebarMenuSubButton
+                                        isActive={location.pathname === item.route}
+                                        onClick={() => navigate(item.route)}
+                                    >
+                                        <NavIcon icon={item.icon} />
+                                        <span>Overview</span>
+                                    </SidebarMenuSubButton>
+                                </SidebarMenuSubItem>
                                 {visibleSubs.map(sub => (
                                     <SidebarMenuSubItem key={sub.id}>
                                         <SidebarMenuSubButton

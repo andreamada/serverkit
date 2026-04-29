@@ -33,11 +33,10 @@ function NavItem({ tab, label, icon: Icon, activeTab, setActiveTab }) {
     return (
         <button
             onClick={() => setActiveTab(tab)}
+            style={{ color: 'hsl(var(--sidebar-foreground))' }}
             className={cn(
                 'flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                active
-                    ? 'bg-accent text-accent-foreground'
-                    : 'text-foreground opacity-60 hover:bg-accent hover:opacity-100'
+                active ? 'bg-accent' : 'hover:bg-accent'
             )}
         >
             <Icon className="h-4 w-4 shrink-0" />

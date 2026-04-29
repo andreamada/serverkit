@@ -4,6 +4,18 @@ import api from '../services/api';
 import { useToast } from '../contexts/ToastContext';
 import { useConfirm } from '../hooks/useConfirm';
 import { ConfirmDialog } from '../components/ConfirmDialog';
+import {
+    DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
+    DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel,
+} from '../components/ui/dropdown-menu';
+import { ChevronDown, Check } from 'lucide-react';
+
+function StatusDot({ status }) {
+    const color = status === 'online' ? 'bg-green-500'
+        : status === 'offline' ? 'bg-red-500'
+        : 'bg-yellow-400';
+    return <span className={`inline-block h-2 w-2 rounded-full shrink-0 ${color}`} />;
+}
 
 // Server context for Docker operations
 const ServerContext = createContext({ serverId: 'local', serverName: 'Local' });
@@ -199,9 +211,7 @@ const Docker = () => {
         { id: 'networks', label: 'Networks' }
     ];
 
-    function handleServerChange(e) {
-        const serverId = e.target.value;
-        const server = servers.find(s => s.id === serverId) || { id: 'local', name: 'Local' };
+    function handleServerChange(server) {
         setSelectedServer(server);
     }
 
@@ -220,16 +230,31 @@ const Docker = () => {
                     <div className="docker-page-subtitle">Manage Containers, Images, and Networks</div>
                 </div>
                 <div className="docker-page-actions">
-                    <div className="server-selector">
-                        <ServerSelectorIcon />
-                        <select value={selectedServer.id} onChange={handleServerChange}>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <button className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-accent focus-visible:outline-none">
+                                <StatusDot status={selectedServer.status || 'online'} />
+                                <span>{selectedServer.name}</span>
+                                <ChevronDown size={13} className="opacity-60" />
+                            </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-52">
+                            <DropdownMenuLabel className="text-xs text-muted-foreground font-normal">Select Server</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
                             {servers.map(server => (
-                                <option key={server.id} value={server.id} disabled={server.status === 'offline'}>
-                                    {server.name} {server.status === 'offline' ? '(Offline)' : ''}
-                                </option>
+                                <DropdownMenuItem
+                                    key={server.id}
+                                    disabled={server.status === 'offline'}
+                                    onSelect={() => handleServerChange(server)}
+                                    className="flex items-center gap-2 text-sm"
+                                >
+                                    <StatusDot status={server.status || 'online'} />
+                                    <span className="flex-1">{server.name}</span>
+                                    {selectedServer.id === server.id && <Check size={13} className="text-foreground opacity-70" />}
+                                </DropdownMenuItem>
                             ))}
-                        </select>
-                    </div>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                     {activeTab === 'containers' && <RunContainerButton />}
                     {activeTab === 'images' && <PullImageButton />}
                     {activeTab === 'networks' && <CreateNetworkButton />}
@@ -293,16 +318,6 @@ const Docker = () => {
         </ServerContext.Provider>
     );
 };
-
-// Server Selector Icon
-const ServerSelectorIcon = () => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-        <rect x="2" y="2" width="20" height="8" rx="2" ry="2"/>
-        <rect x="2" y="14" width="20" height="8" rx="2" ry="2"/>
-        <line x1="6" y1="6" x2="6.01" y2="6"/>
-        <line x1="6" y1="18" x2="6.01" y2="18"/>
-    </svg>
-);
 
 // Action Buttons
 const RunContainerButton = () => {
