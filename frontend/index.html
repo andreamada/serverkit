@@ -25,23 +25,50 @@
             if (accent) {
                 var m = accent.match(/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i);
                 if (m) {
-                    var r = parseInt(m[1],16), g = parseInt(m[2],16), b = parseInt(m[3],16);
+                    var r = parseInt(m[1],16)/255, g = parseInt(m[2],16)/255, b = parseInt(m[3],16)/255;
+                    var max = Math.max(r,g,b), min = Math.min(r,g,b);
+                    var h, s, l = (max+min)/2;
+                    if (max === min) { h = s = 0; } else {
+                        var diff = max - min;
+                        s = l > 0.5 ? diff/(2-max-min) : diff/(max+min);
+                        switch(max) { case r: h=(g-b)/diff+(g<b?6:0); break; case g: h=(b-r)/diff+2; break; case b: h=(r-g)/diff+4; break; }
+                        h /= 6;
+                    }
+                    var hsl = Math.round(h*360)+' '+Math.round(s*100)+'% '+Math.round(l*100)+'%';
                     var dk = function(v){ return Math.max(0, Math.round(v*0.88)); };
                     d.style.setProperty('--accent-primary', accent);
-                    d.style.setProperty('--accent-hover', '#'+dk(r).toString(16).padStart(2,'0')+dk(g).toString(16).padStart(2,'0')+dk(b).toString(16).padStart(2,'0'));
-                    d.style.setProperty('--accent-glow', 'rgba('+r+','+g+','+b+',0.15)');
-                    d.style.setProperty('--accent-shadow', 'rgba('+r+','+g+','+b+',0.3)');
+                    d.style.setProperty('--accent-hover', '#'+dk(r*255).toString(16).padStart(2,'0')+dk(g*255).toString(16).padStart(2,'0')+dk(b*255).toString(16).padStart(2,'0'));
+                    d.style.setProperty('--accent-glow', 'rgba('+Math.round(r*255)+','+Math.round(g*255)+','+Math.round(b*255)+',0.15)');
+                    d.style.setProperty('--accent-shadow', 'rgba('+Math.round(r*255)+','+Math.round(g*255)+','+Math.round(b*255)+',0.3)');
+                    d.style.setProperty('--ring', hsl);
+                    d.style.setProperty('--primary', hsl);
                 }
             }
-            var wl = localStorage.getItem('white_label');
-            if (wl) {
-                try {
+            var pageTitles = {
+                '/': 'Dashboard', '/dashboard': 'Dashboard',
+                '/servers': 'Servers', '/applications': 'Applications',
+                '/databases': 'Databases', '/docker': 'Docker',
+                '/security': 'Security', '/ssl': 'SSL',
+                '/domains': 'Domains', '/dns': 'DNS', '/email': 'Email',
+                '/files': 'File Manager', '/ftp': 'FTP',
+                '/git': 'Git', '/cron': 'Cron Jobs',
+                '/monitoring': 'Monitoring', '/backups': 'Backups',
+                '/terminal': 'Terminal', '/settings': 'Settings',
+                '/users': 'Users', '/marketplace': 'Marketplace',
+                '/services': 'Services', '/apps': 'Applications',
+                '/wordpress': 'WordPress', '/workflows': 'Workflows',
+            };
+            var basePath = '/' + window.location.pathname.split('/')[1];
+            var pageTitle = pageTitles[basePath];
+            var brandName = 'ServerKit';
+            try {
+                var wl = localStorage.getItem('white_label');
+                if (wl) {
                     var w = JSON.parse(wl);
-                    if (w.enabled && w.brandName) {
-                        document.title = w.brandName;
-                    }
-                } catch(e) {}
-            }
+                    if (w.enabled && w.brandName) brandName = w.brandName;
+                }
+            } catch(e) {}
+            document.title = pageTitle ? pageTitle + ' | ' + brandName : brandName;
         })();
     </script>
 </head>

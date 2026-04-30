@@ -70,16 +70,29 @@
     resize: vertical;
     line-height: 1.5;
 }
-.form-control:focus,
-.settings-form input:focus,
-.settings-form textarea:focus,
-.settings-form select:focus,
-.settings-card input:focus,
-.settings-card textarea:focus,
-.settings-card select:focus {
-    border-color: hsl(var(--ring));
-    outline: none;
-    box-shadow: none;
+/* Native <select> — match shadcn Input appearance (appearance:none + custom chevron) */
+.settings-form select,
+.settings-card select,
+select.form-control,
+select.settings-select,
+select.form-select {
+    height: 2.25rem;
+    appearance: none;
+    cursor: pointer;
+    padding-top: 0;
+    padding-bottom: 0;
+    padding-right: 2.25rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2371717a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.625rem center;
+    background-size: 1rem;
+}
+input:focus:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+textarea:focus,
+select:focus {
+    border-color: var(--accent-primary) !important;
+    outline: none !important;
+    box-shadow: none !important;
 }
 input::placeholder,
 textarea::placeholder {

@@ -61,7 +61,7 @@ export default function AppHeader() {
             <div className={cn(
                 'flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm transition-all w-64',
                 searchFocused
-                    ? 'border-ring ring-2 ring-ring/30 bg-background'
+                    ? 'border-[var(--accent-primary)] ring-2 ring-[var(--accent-shadow)] bg-background'
                     : 'border-border bg-muted/40 hover:bg-muted/70'
             )}>
                 <Search className="h-4 w-4 shrink-0 text-muted-foreground" />

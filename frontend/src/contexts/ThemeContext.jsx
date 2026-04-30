@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import api from '../services/api';
+import { hexToHsl } from '../lib/utils';
 
 const ThemeContext = createContext(null);
 
@@ -45,12 +47,15 @@ function deriveAccentVariants(hex) {
 
 // Apply accent CSS custom properties to the document
 function applyAccentToDOM(hex) {
-    const variants = deriveAccentVariants(hex);
     const style = document.documentElement.style;
-    style.setProperty('--accent-primary', variants.primary);
-    style.setProperty('--accent-hover', variants.hover);
-    style.setProperty('--accent-glow', variants.glow);
-    style.setProperty('--accent-shadow', variants.shadow);
+    const { hover, glow, shadow } = deriveAccentVariants(hex);
+    const hsl = hexToHsl(hex);
+    style.setProperty('--accent-primary', hex);
+    style.setProperty('--accent-hover', hover);
+    style.setProperty('--accent-glow', glow);
+    style.setProperty('--accent-shadow', shadow);
+    style.setProperty('--ring', hsl);
+    style.setProperty('--primary', hsl);
 }
 
 export function ThemeProvider({ children }) {
@@ -83,9 +88,6 @@ export function ThemeProvider({ children }) {
                 if (res.enabled !== undefined) {
                     setWhiteLabel(res);
                     localStorage.setItem('white_label', JSON.stringify(res));
-                    if (res.enabled && res.brandName) {
-                        document.title = res.brandName;
-                    }
                 }
             } catch (e) {
                 console.warn('Failed to load white-label config');
@@ -95,18 +97,26 @@ export function ThemeProvider({ children }) {
     }, []);
 
     // Update the DOM attribute, .dark class, and resolved theme
-    const applyTheme = useCallback((newTheme) => {
-        const resolved = getResolvedTheme(newTheme);
-        document.documentElement.setAttribute('data-theme', newTheme);
-        document.documentElement.classList.toggle('dark', resolved === 'dark');
+    const applyTheme = useCallback(() => {
+        const resolved = getResolvedTheme(theme);
         setResolvedTheme(resolved);
-    }, []);
+        document.documentElement.setAttribute('data-theme', resolved);
+        document.documentElement.style.setProperty('--accent-primary', accentColor);
+        const { hover, glow, shadow } = deriveAccentVariants(accentColor);
+        document.documentElement.style.setProperty('--accent-hover', hover);
+        document.documentElement.style.setProperty('--accent-glow', glow);
+        document.documentElement.style.setProperty('--accent-shadow', shadow);
+        const hsl = hexToHsl(accentColor);
+        document.documentElement.style.setProperty('--ring', hsl);
+        document.documentElement.style.setProperty('--primary', hsl);
+        document.documentElement.classList.toggle('dark', resolved === 'dark');
+    }, [theme, accentColor]);
 
     // Public setter that updates state, localStorage, and DOM
     const setTheme = useCallback((newTheme) => {
         setThemeState(newTheme);
         localStorage.setItem('theme', newTheme);
-        applyTheme(newTheme);
+        applyTheme();
     }, [applyTheme]);
 
     // Public setter for accent color
